@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 from datetime import datetime
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def sample_transactions():
@@ -96,18 +97,23 @@ def sample_user_settings():
     }
 
 @pytest.fixture
-def mock_currency_rates_response():
-    return {
+def mock_currency_rates_response(monkeypatch):
+    mock_response = {
         "rates": {
             "USD": 73.21,
             "EUR": 87.08,
             "RUB": 1.0
         }
     }
+    mock = MagicMock()
+    mock.status_code = 200
+    mock.json.return_value = mock_response
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: mock)
+    return mock_response
 
 @pytest.fixture
-def mock_stock_prices_response():
-    return {
+def mock_stock_prices_response(monkeypatch):
+    mock_response = {
         "Time Series (1min)": {
             "2023-10-15 14:30:00": {
                 "1. open": "150.12"
@@ -126,3 +132,8 @@ def mock_stock_prices_response():
             }
         }
     }
+    mock = MagicMock()
+    mock.status_code = 200
+    mock.json.return_value = mock_response
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: mock)
+    return mock_response

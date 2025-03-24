@@ -44,18 +44,14 @@ def test_get_top_transactions(sample_transactions):
         {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
     ]
 
-def test_get_currency_rates(mock_requests_get, mock_currency_rates_response):
-    mock_requests_get.return_value.status_code = 200
-    mock_requests_get.return_value.json.return_value = mock_currency_rates_response
+def test_get_currency_rates(mock_currency_rates_response):
     rates = get_currency_rates(["USD", "EUR"])
     assert rates == [
         {"currency": "USD", "rate": 0.0136},
         {"currency": "EUR", "rate": 0.0115}
     ]
 
-def test_get_stock_prices(mock_requests_get, mock_stock_prices_response):
-    mock_requests_get.return_value.status_code = 200
-    mock_requests_get.return_value.json.return_value = mock_stock_prices_response
+def test_get_stock_prices(mock_stock_prices_response):
     prices = get_stock_prices(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"])
     assert prices == [
         {"stock": "AAPL", "price": 150.12},

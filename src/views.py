@@ -1,7 +1,7 @@
-import json
-
-from _pytest import logging
-
+import pytest
+import pandas as pd
+from datetime import datetime
+from src.views import home_view, events_view
 from src.utils import (
     read_transactions,
     get_date_range,
@@ -9,80 +9,167 @@ from src.utils import (
     get_card_summaries,
     get_top_transactions,
     get_currency_rates,
-    get_stock_prices,
-    summarize_expenses,
-    summarize_income
+    get_stock_prices
 )
 
+@pytest.fixture
+def sample_transactions():
+    data = [
+        {
+            "Дата операции": "2023-10-01",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -1262.00,
+            "Кешбэк": 12.62,
+            "Категория": "Супермаркеты",
+            "Описание": "Лента"
+        },
+        {
+            "Дата операции": "2023-10-10",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -7.94,
+            "Кешбэк": 0.08,
+            "Категория": "Супермаркеты",
+            "Описание": "Магнит"
+        },
+        {
+            "Дата операции": "2023-10-15",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": -1198.23,
+            "Кешбэк": 11.98,
+            "Категория": "Переводы",
+            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
+        },
+        {
+            "Дата операции": "2023-10-20",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -829.00,
+            "Кешбэк": 8.29,
+            "Категория": "Супермаркеты",
+            "Описание": "Лента"
+        },
+        {
+            "Дата операции": "2023-10-25",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -421.00,
+            "Кешбэк": 4.21,
+            "Категория": "Различные товары",
+            "Описание": "Ozon.ru"
+        },
+        {
+            "Дата операции": "2023-09-15",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 14216.42,
+            "Кешбэк": 0.00,
+            "Категория": "Пополнение_BANK007",
+            "Описание": "Пополнение счета"
+        },
+        {
+            "Дата операции": "2023-09-20",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": -453.00,
+            "Кешбэк": 4.53,
+            "Категория": "Бонусы",
+            "Описание": "Кешбэк за обычные покупки"
+        },
+        {
+            "Дата операции": "2023-09-25",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": 33000.00,
+            "Кешбэк": 0.00,
+            "Категория": "Пополнение_BANK007",
+            "Описание": "Пополнение счета"
+        },
+        {
+            "Дата операции": "2023-08-15",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 1242.00,
+            "Кешбэк": 12.42,
+            "Категория": "Проценты_на_остаток",
+            "Описание": "Проценты по остатку"
+        },
+        {
+            "Дата операции": "2023-08-20",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 29.00,
+            "Кешбэк": 0.29,
+            "Категория": "Кэшбэк",
+            "Описание": "Кешбэк за обычные покупки"
+        },
+        {
+            "Дата операции": "2023-08-25",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 1000.00,
+            "Кешбэк": 10.00,
+            "Категория": "Переводы",
+            "Описание": "Валерий А."
+        }
+    ]
+    df = pd.DataFrame(data)
+    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
+    return df
 
-def home_view(input_date_str):
-    """
-    Функция для страницы «Главная».
+def test_home_view(sample_transactions, monkeypatch, mock_currency_rates_response, mock_stock_prices_response):
+    def mock_read_transactions(file_path):
+        return sample_transactions
 
-    Принимает на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS.
-    Возвращает JSON-ответ с данными о транзакциях, курсах валют и ценах на акции.
-    """
-    df = read_transactions()
-    if df.empty:
-        logging.error("Нет данных для анализа.")
-        return {}
+    monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
 
-    start, end = get_date_range(input_date_str)
-    greeting = get_greeting(end.hour)
+    response = home_view("2023-10-15 14:30:00")
+    assert response["greeting"] == "Добрый день"
+    assert response["cards"] == [
+        {"last_digits": "3456", "total_spent": 3210.00, "cashback": 36.53},
+        {"last_digits": "4321", "total_spent": 1651.23, "cashback": 16.51}
+    ]
+    assert response["top_transactions"] == [
+        {"date": "15.10.2023", "amount": 14216.42, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
+        {"date": "15.10.2023", "amount": 33000.00, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
+        {"date": "20.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
+        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"},
+        {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
+    ]
+    assert response["currency_rates"] == [
+        {"currency": "USD", "rate": 0.0136},
+        {"currency": "EUR", "rate": 0.0115}
+    ]
+    assert response["stock_prices"] == [
+        {"stock": "AAPL", "price": 150.12},
+        {"stock": "AMZN", "price": 3173.18},
+        {"stock": "GOOGL", "price": 2742.39},
+        {"stock": "MSFT", "price": 296.71},
+        {"stock": "TSLA", "price": 1007.08}
+    ]
 
-    # Загрузка пользовательских настроек
-    try:
-        with open("user_settings.json") as f:
-            settings = json.load(f)
-        currencies = settings.get("user_currencies", [])
-        stocks = settings.get("user_stocks", [])
-    except Exception as e:
-        logging.error(f"Ошибка чтения пользовательских настроек: {e}")
-        currencies = []
-        stocks = []
+def test_events_view(sample_transactions, monkeypatch, mock_currency_rates_response, mock_stock_prices_response):
+    def mock_read_transactions(file_path):
+        return sample_transactions
 
-    # Получение данных для JSON-ответа
-    response = {
-        "greeting": greeting,
-        "cards": get_card_summaries(df, start, end),
-        "top_transactions": get_top_transactions(df, start, end),
-        "currency_rates": get_currency_rates(currencies),
-        "stock_prices": get_stock_prices(stocks)
-    }
-    return response
+    monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
 
-
-def events_view(input_date_str, period="M"):
-    """
-    Функция для страницы «События».
-
-    Принимает на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS.
-    Второй необязательный параметр period определяет диапазон данных (W, M, Y, ALL).
-    Возвращает JSON-ответ с данными о расходах, поступлениях, курсах валют и ценах на акции.
-    """
-    df = read_transactions()
-    if df.empty:
-        logging.error("Нет данных для анализа.")
-        return {}
-
-    start, end = get_date_range(input_date_str, period)
-
-    # Загрузка пользовательских настроек
-    try:
-        with open("user_settings.json") as f:
-            settings = json.load(f)
-        currencies = settings.get("user_currencies", [])
-        stocks = settings.get("user_stocks", [])
-    except Exception as e:
-        logging.error(f"Ошибка чтения пользовательских настроек: {e}")
-        currencies = []
-        stocks = []
-
-    # Получение данных для JSON-ответа
-    response = {
-        "expenses": summarize_expenses(df, start, end),
-        "income": summarize_income(df, start, end),
-        "currency_rates": get_currency_rates(currencies),
-        "stock_prices": get_stock_prices(stocks)
-    }
-    return response
+    response = events_view("2023-10-15 14:30:00")
+    assert response["expenses"]["total_amount"] == 3210
+    assert response["expenses"]["main"] == [
+        {"category": "Супермаркеты", "amount": 2524},
+        {"category": "Переводы", "amount": 1198},
+        {"category": "Различные товары", "amount": 421},
+        {"category": "Остальное", "amount": 0}
+    ]
+    assert response["expenses"]["transfers_and_cash"] == [
+        {"category": "Переводы", "amount": 1198},
+        {"category": "Остальное", "amount": 0}
+    ]
+    assert response["income"]["total_amount"] == 47445
+    assert response["income"]["main"] == [
+        {"category": "Пополнение_BANK007", "amount": 47445},
+        {"category": "Остальное", "amount": 0}
+    ]
+    assert response["currency_rates"] == [
+        {"currency": "USD", "rate": 0.0136},
+        {"currency": "EUR", "rate": 0.0115}
+    ]
+    assert response["stock_prices"] == [
+        {"stock": "AAPL", "price": 150.12},
+        {"stock": "AMZN", "price": 3173.18},
+        {"stock": "GOOGL", "price": 2742.39},
+        {"stock": "MSFT", "price": 296.71},
+        {"stock": "TSLA", "price": 1007.08}
+    ]

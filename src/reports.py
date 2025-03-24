@@ -1,124 +1,126 @@
-import json
-import logging
-from datetime import datetime, timedelta
+import pytest
 import pandas as pd
-from typing import Optional, Callable, Any
+from src.reports import (
+    spending_by_category,
+    spending_by_weekday,
+    spending_by_workday
+)
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+@pytest.fixture
+def sample_transactions():
+    data = [
+        {
+            "Дата операции": "2023-10-01",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -1262.00,
+            "Кешбэк": 12.62,
+            "Категория": "Супермаркеты",
+            "Описание": "Лента"
+        },
+        {
+            "Дата операции": "2023-10-10",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -7.94,
+            "Кешбэк": 0.08,
+            "Категория": "Супермаркеты",
+            "Описание": "Магнит"
+        },
+        {
+            "Дата операции": "2023-10-15",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": -1198.23,
+            "Кешбэк": 11.98,
+            "Категория": "Переводы",
+            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
+        },
+        {
+            "Дата операции": "2023-10-20",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -829.00,
+            "Кешбэк": 8.29,
+            "Категория": "Супермаркеты",
+            "Описание": "Лента"
+        },
+        {
+            "Дата операции": "2023-10-25",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": -421.00,
+            "Кешбэк": 4.21,
+            "Категория": "Различные товары",
+            "Описание": "Ozon.ru"
+        },
+        {
+            "Дата операции": "2023-09-15",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 14216.42,
+            "Кешбэк": 0.00,
+            "Категория": "Пополнение_BANK007",
+            "Описание": "Пополнение счета"
+        },
+        {
+            "Дата операции": "2023-09-20",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": -453.00,
+            "Кешбэк": 4.53,
+            "Категория": "Бонусы",
+            "Описание": "Кешбэк за обычные покупки"
+        },
+        {
+            "Дата операции": "2023-09-25",
+            "Номер карты": "6543210987654321",
+            "Сумма операции": 33000.00,
+            "Кешбэк": 0.00,
+            "Категория": "Пополнение_BANK007",
+            "Описание": "Пополнение счета"
+        },
+        {
+            "Дата операции": "2023-08-15",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 1242.00,
+            "Кешбэк": 12.42,
+            "Категория": "Проценты_на_остаток",
+            "Описание": "Проценты по остатку"
+        },
+        {
+            "Дата операции": "2023-08-20",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 29.00,
+            "Кешбэк": 0.29,
+            "Категория": "Кэшбэк",
+            "Описание": "Кешбэк за обычные покупки"
+        },
+        {
+            "Дата операции": "2023-08-25",
+            "Номер карты": "1234567890123456",
+            "Сумма операции": 1000.00,
+            "Кешбэк": 10.00,
+            "Категория": "Переводы",
+            "Описание": "Валерий А."
+        }
+    ]
+    df = pd.DataFrame(data)
+    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
+    return df
 
+def test_spending_by_category(sample_transactions):
+    result = spending_by_category(sample_transactions, "Супермаркеты", date="2023-10-15")
+    assert result == {"category": "Супермаркеты", "total": 2524.0}
 
-def save_report(filename: Optional[str] = None):
-    """
-    Декоратор для сохранения отчета в файл.
+def test_spending_by_weekday(sample_transactions):
+    result = spending_by_weekday(sample_transactions, date="2023-10-15")
+    assert result == {
+        "Monday": 0.0,
+        "Tuesday": 0.0,
+        "Wednesday": 0.0,
+        "Thursday": 0.0,
+        "Friday": 2524.0,
+        "Saturday": 0.0,
+        "Sunday": 0.0
+    }
 
-    :param filename: Имя файла для сохранения отчета. Если None, используется имя по умолчанию.
-    """
-
-    def decorator(func: Callable[..., Any]):
-        def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            if filename:
-                with open(filename, "w") as f:
-                    json.dump(result, f, ensure_ascii=False, indent=4)
-            else:
-                default_filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                with open(default_filename, "w") as f:
-                    json.dump(result, f, ensure_ascii=False, indent=4)
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-@save_report()
-def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> dict:
-    """
-    Функция для получения трат по заданной категории за последние три месяца.
-
-    :param transactions: Датафрейм с транзакциями.
-    :param category: Название категории.
-    :param date: Опциональная дата для отсчета трехмесячного периода (строка в формате 'YYYY-MM-DD').
-    :return: JSON с тратами по категории.
-    """
-    try:
-        if date is None:
-            date = datetime.now()
-        else:
-            date = datetime.strptime(date, "%Y-%m-%d")
-
-        three_months_ago = date - pd.DateOffset(months=3)
-        filtered = transactions[
-            (transactions["Дата операции"] >= three_months_ago) &
-            (transactions["Дата операции"] <= date) &
-            (transactions["Категория"] == category)
-            ]
-        total = filtered["Сумма операции"].sum()
-        return {"category": category, "total": round(-total, 2)}
-    except Exception as e:
-        logging.error(f"Ошибка при формировании отчета по категории: {e}")
-        return {}
-
-
-@save_report()
-def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> dict:
-    """
-    Функция для получения средних трат по дням недели за последние три месяца.
-
-    :param transactions: Датафрейм с транзакциями.
-    :param date: Опциональная дата для отсчета трехмесячного периода (строка в формате 'YYYY-MM-DD').
-    :return: JSON со средними тратами по дням недели.
-    """
-    try:
-        if date is None:
-            date = datetime.now()
-        else:
-            date = datetime.strptime(date, "%Y-%m-%d")
-
-        three_months_ago = date - pd.DateOffset(months=3)
-        filtered = transactions[
-            (transactions["Дата операции"] >= three_months_ago) &
-            (transactions["Дата операции"] <= date)
-            ]
-        filtered["День недели"] = filtered["Дата операции"].dt.day_name()
-        grouped = filtered.groupby("День недели")["Сумма операции"].mean().reset_index()
-        result = {row["День недели"]: round(-row["Сумма операции"], 2) for _, row in grouped.iterrows()}
-        return result
-    except Exception as e:
-        logging.error(f"Ошибка при формировании отчета по дням недели: {e}")
-        return {}
-
-
-@save_report()
-def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) -> dict:
-    """
-    Функция для получения средних трат в рабочий и выходной день за последние три месяца.
-
-    :param transactions: Датафрейм с транзакциями.
-    :param date: Опциональная дата для отсчета трехмесячного периода (строка в формате 'YYYY-MM-DD').
-    :return: JSON со средними тратами в рабочий и выходной день.
-    """
-    try:
-        if date is None:
-            date = datetime.now()
-        else:
-            date = datetime.strptime(date, "%Y-%m-%d")
-
-        three_months_ago = date - pd.DateOffset(months=3)
-        filtered = transactions[
-            (transactions["Дата операции"] >= three_months_ago) &
-            (transactions["Дата операции"] <= date)
-            ]
-        filtered["Рабочий день"] = filtered["Дата операции"].dt.weekday < 5
-        grouped = filtered.groupby("Рабочий день")["Сумма операции"].mean().reset_index()
-        result = {}
-        for _, row in grouped.iterrows():
-            if row["Рабочий день"]:
-                result["Рабочий день"] = round(-row["Сумма операции"], 2)
-            else:
-                result["Выходной день"] = round(-row["Сумма операции"], 2)
-        return result
-    except Exception as e:
-        logging.error(f"Ошибка при формировании отчета по рабочим и выходным дням: {e}")
-        return {}
+def test_spending_by_workday(sample_transactions):
+    result = spending_by_workday(sample_transactions, date="2023-10-15")
+    assert result == {
+        "Рабочий день": 2524.0,
+        "Выходной день": 0.0
+    }
