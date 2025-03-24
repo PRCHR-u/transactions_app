@@ -1,7 +1,3 @@
-import pytest
-import pandas as pd
-from datetime import datetime
-from src.views import home_view, events_view
 from src.utils import (
     read_transactions,
     get_date_range,
@@ -12,164 +8,80 @@ from src.utils import (
     get_stock_prices
 )
 
-@pytest.fixture
-def sample_transactions():
-    data = [
-        {
-            "Дата операции": "2023-10-01",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -1262.00,
-            "Кешбэк": 12.62,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-10",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -7.94,
-            "Кешбэк": 0.08,
-            "Категория": "Супермаркеты",
-            "Описание": "Магнит"
-        },
-        {
-            "Дата операции": "2023-10-15",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": -1198.23,
-            "Кешбэк": 11.98,
-            "Категория": "Переводы",
-            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
-        },
-        {
-            "Дата операции": "2023-10-20",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -829.00,
-            "Кешбэк": 8.29,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-25",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -421.00,
-            "Кешбэк": 4.21,
-            "Категория": "Различные товары",
-            "Описание": "Ozon.ru"
-        },
-        {
-            "Дата операции": "2023-09-15",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 14216.42,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-09-20",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": -453.00,
-            "Кешбэк": 4.53,
-            "Категория": "Бонусы",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-09-25",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": 33000.00,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-08-15",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 1242.00,
-            "Кешбэк": 12.42,
-            "Категория": "Проценты_на_остаток",
-            "Описание": "Проценты по остатку"
-        },
-        {
-            "Дата операции": "2023-08-20",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 29.00,
-            "Кешбэк": 0.29,
-            "Категория": "Кэшбэк",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-08-25",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 1000.00,
-            "Кешбэк": 10.00,
-            "Категория": "Переводы",
-            "Описание": "Валерий А."
-        }
-    ]
-    df = pd.DataFrame(data)
-    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
-    return df
+def home_view(current_time):
+    """
+    Возвращает данные для главной страницы.
+    """
+    greeting = get_greeting(current_time)
+    transactions = read_transactions("path_to_transactions.csv")
+    cards = get_card_summaries(transactions)
+    top_transactions = get_top_transactions(transactions)
+    currency_rates = get_currency_rates()
+    stock_prices = get_stock_prices()
 
-def test_home_view(sample_transactions, monkeypatch, mock_currency_rates_response, mock_stock_prices_response):
-    def mock_read_transactions(file_path):
-        return sample_transactions
+    return {
+        "greeting": greeting,
+        "cards": cards,
+        "top_transactions": top_transactions,
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices,
+    }
 
-    monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
+def events_view(current_time):
+    """
+    Возвращает данные для страницы событий.
+    """
+    # Read transactions (use a valid file path or mock it in tests)
+    transactions = read_transactions("data/transactions.csv")
 
-    response = home_view("2023-10-15 14:30:00")
-    assert response["greeting"] == "Добрый день"
-    assert response["cards"] == [
-        {"last_digits": "3456", "total_spent": 3210.00, "cashback": 36.53},
-        {"last_digits": "4321", "total_spent": 1651.23, "cashback": 16.51}
-    ]
-    assert response["top_transactions"] == [
-        {"date": "15.10.2023", "amount": 14216.42, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "15.10.2023", "amount": 33000.00, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "20.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
-        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"},
-        {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
-    ]
-    assert response["currency_rates"] == [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
-    assert response["stock_prices"] == [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
+    # Calculate expenses and income
+    expenses = calculate_expenses(transactions)
+    income = calculate_income(transactions)
 
-def test_events_view(sample_transactions, monkeypatch, mock_currency_rates_response, mock_stock_prices_response):
-    def mock_read_transactions(file_path):
-        return sample_transactions
+    # Get currency rates and stock prices
+    currency_rates = get_currency_rates(currencies=["USD", "EUR"])
+    stock_prices = get_stock_prices()
 
-    monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
+    return {
+        "expenses": expenses,
+        "income": income,
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices,
+    }
 
-    response = events_view("2023-10-15 14:30:00")
-    assert response["expenses"]["total_amount"] == 3210
-    assert response["expenses"]["main"] == [
-        {"category": "Супермаркеты", "amount": 2524},
-        {"category": "Переводы", "amount": 1198},
-        {"category": "Различные товары", "amount": 421},
-        {"category": "Остальное", "amount": 0}
-    ]
-    assert response["expenses"]["transfers_and_cash"] == [
-        {"category": "Переводы", "amount": 1198},
-        {"category": "Остальное", "amount": 0}
-    ]
-    assert response["income"]["total_amount"] == 47445
-    assert response["income"]["main"] == [
-        {"category": "Пополнение_BANK007", "amount": 47445},
-        {"category": "Остальное", "amount": 0}
-    ]
-    assert response["currency_rates"] == [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
-    assert response["stock_prices"] == [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
+
+def calculate_expenses(transactions):
+    """
+    Рассчитывает расходы.
+    """
+    # Ensure the "Сумма операции" column exists
+    if "Сумма операции" not in transactions.columns:
+        raise ValueError("Столбец 'Сумма операции' отсутствует в данных.")
+
+    # Filter for expenses (negative amounts)
+    expenses = transactions[transactions["Сумма операции"] < 0]
+
+    # Calculate total expenses
+    total_amount = expenses["Сумма операции"].sum()
+
+    # Group by category
+    main_categories = expenses.groupby("Категория")["Сумма операции"].sum().reset_index()
+    main_categories = main_categories.rename(columns={"Сумма операции": "amount"})
+    main_categories = main_categories.to_dict("records")
+
+    return {
+        "total_amount": total_amount,
+        "main": main_categories
+    }
+
+
+def calculate_income(transactions):
+    """
+    Рассчитывает доходы.
+    """
+    income = transactions[transactions["Сумма операции"] > 0]
+    total_amount = income["Сумма операции"].sum()
+    main_categories = income.groupby("Категория")["Сумма операции"].sum().reset_index()
+    main_categories = main_categories.rename(columns={"Сумма операции": "amount"})
+    main_categories = main_categories.to_dict("records")
+    return {"total_amount": total_amount, "main": main_categories}

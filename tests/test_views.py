@@ -143,7 +143,11 @@ def test_events_view(sample_transactions, monkeypatch):
     def mock_read_transactions(file_path):
         return sample_transactions
 
+    def mock_get_currency_rates(currencies):
+        return [{"currency": "USD", "rate": 0.0136}, {"currency": "EUR", "rate": 0.0115}]
+
     monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
+    monkeypatch.setattr("src.utils.get_currency_rates", mock_get_currency_rates)
 
     response = events_view("2023-10-15 14:30:00")
     assert response["expenses"]["total_amount"] == 3210

@@ -1,156 +1,131 @@
-import pytest
-from src.services import (
-    profitable_categories,
-    investment_bank,
-    simple_search,
-    search_phone_numbers,
-    search_physical_transfers
-)
+import json
+import logging
+from datetime import datetime
+from typing import List, Dict, Any
+import pandas as pd
+import re
 
-@pytest.fixture
-def sample_transactions():
-    data = [
-        {
-            "Дата операции": "2023-10-01",
-            "Сумма операции": -1262.00,
-            "Кешбэк": 12.62,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-10",
-            "Сумма операции": -7.94,
-            "Кешбэк": 0.08,
-            "Категория": "Супермаркеты",
-            "Описание": "Магнит"
-        },
-        {
-            "Дата операции": "2023-10-15",
-            "Сумма операции": -1198.23,
-            "Кешбэк": 11.98,
-            "Категория": "Переводы",
-            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
-        },
-        {
-            "Дата операции": "2023-10-20",
-            "Сумма операции": -829.00,
-            "Кешбэк": 8.29,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-25",
-            "Сумма операции": -421.00,
-            "Кешбэк": 4.21,
-            "Категория": "Различные товары",
-            "Описание": "Ozon.ru"
-        },
-        {
-            "Дата операции": "2023-09-15",
-            "Сумма операции": 14216.42,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-09-20",
-            "Сумма операции": -453.00,
-            "Кешбэк": 4.53,
-            "Категория": "Бонусы",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-09-25",
-            "Сумма операции": 33000.00,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-08-15",
-            "Сумма операции": 1242.00,
-            "Кешбэк": 12.42,
-            "Категория": "Проценты_на_остаток",
-            "Описание": "Проценты по остатку"
-        },
-        {
-            "Дата операции": "2023-08-20",
-            "Сумма операции": 29.00,
-            "Кешбэк": 0.29,
-            "Категория": "Кэшбэк",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-08-25",
-            "Сумма операции": 1000.00,
-            "Кешбэк": 10.00,
-            "Категория": "Переводы",
-            "Описание": "Валерий А."
-        }
-    ]
-    return data
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def test_profitable_categories(sample_transactions):
-    result = profitable_categories(pd.DataFrame(sample_transactions), 2023, 10)
-    assert result == {
-        "Супермаркеты": 2524.0,
-        "Переводы": 1198.23,
-        "Различные товары": 421.0,
-        "Бонусы": 453.0,
-        "Пополнение_BANK007": 0.0,
-        "Проценты_на_остаток": 0.0,
-        "Кэшбэк": 0.0
-    }
 
-def test_investment_bank(sample_transactions):
-    result = investment_bank("2023-10", sample_transactions, 50)
-    assert result == 38.0
+def profitable_categories(data: pd.DataFrame, year: int, month: int) -> Dict[str, float]:
+    """
+    Функция для анализа выгодности категорий повышенного кешбэка.
 
-def test_simple_search(sample_transactions):
-    result = simple_search("Супермаркеты", sample_transactions)
-    assert result == [
-        {
-            "Дата операции": "2023-10-01",
-            "Сумма операции": -1262.00,
-            "Кешбэк": 12.62,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-10",
-            "Сумма операции": -7.94,
-            "Кешбэк": 0.08,
-            "Категория": "Супермаркеты",
-            "Описание": "Магнит"
-        },
-        {
-            "Дата операции": "2023-10-20",
-            "Сумма операции": -829.00,
-            "Кешбэк": 8.29,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        }
-    ]
+    На вход принимает данные с транзакциями, год и месяц.
+    На выходе возвращает JSON с анализом, сколько на каждой категории можно заработать кешбэка.
 
-def test_search_phone_numbers(sample_transactions):
-    result = search_phone_numbers(sample_transactions)
-    assert result == []
+    :param data: Датафрейм с транзакциями.
+    :param year: Год для анализа.
+    :param month: Месяц для анализа.
+    :return: JSON с анализом кешбэка по категориям.
+    """
+    try:
+        start_date = datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1) - pd.Timedelta(days=1)
+        else:
+            end_date = datetime(year, month + 1, 1) - pd.Timedelta(days=1)
 
-def test_search_physical_transfers(sample_transactions):
-    result = search_physical_transfers(sample_transactions)
-    assert result == [
-        {
-            "Дата операции": "2023-10-15",
-            "Сумма операции": -1198.23,
-            "Кешбэк": 11.98,
-            "Категория": "Переводы",
-            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
-        },
-        {
-            "Дата операции": "2023-08-25",
-            "Сумма операции": 1000.00,
-            "Кешбэк": 10.00,
-            "Категория": "Переводы",
-            "Описание": "Валерий А."
-        }
-    ]
+        filtered_data = data[
+            (data["Дата операции"] >= start_date) &
+            (data["Дата операции"] <= end_date)
+            ]
+
+        grouped = filtered_data.groupby("Категория")["Кешбэк"].sum().reset_index()
+        result = {row["Категория"]: round(row["Кешбэк"], 2) for _, row in grouped.iterrows()}
+        return result
+    except Exception as e:
+        logging.error(f"Ошибка при анализе выгодных категорий: {e}")
+        return {}
+
+
+def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) -> float:
+    """
+    Функция для расчета суммы, которую можно отложить в «Инвесткопилку».
+
+    :param month: Месяц для которого рассчитывается отложенная сумма (формат 'YYYY-MM').
+    :param transactions: Список словарей с транзакциями.
+    :param limit: Предел, до которого нужно округлять суммы операций.
+    :return: Сумма, которую удалось бы отложить в «Инвесткопилку».
+    """
+    try:
+        year, month_num = map(int, month.split("-"))
+        start_date = datetime(year, month_num, 1)
+        if month_num == 12:
+            end_date = datetime(year + 1, 1, 1) - pd.Timedelta(days=1)
+        else:
+            end_date = datetime(year, month_num + 1, 1) - pd.Timedelta(days=1)
+
+        filtered_transactions = [
+            tx for tx in transactions
+            if start_date <= datetime.strptime(tx["Дата операции"], "%Y-%m-%d") <= end_date
+        ]
+
+        total_invested = sum(
+            (tx["Сумма операции"] + limit - 1) // limit * limit - tx["Сумма операции"]
+            for tx in filtered_transactions
+        )
+        return round(total_invested, 2)
+    except Exception as e:
+        logging.error(f"Ошибка при расчете инвестиций: {e}")
+        return 0.0
+
+
+def simple_search(query: str, transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Функция для простого поиска транзакций по описанию или категории.
+
+    :param query: Строка для поиска.
+    :param transactions: Список словарей с транзакциями.
+    :return: Список транзакций, содержащих запрос в описании или категории.
+    """
+    try:
+        query_lower = query.lower()
+        result = [
+            tx for tx in transactions
+            if query_lower in tx["Описание"].lower() or query_lower in tx["Категория"].lower()
+        ]
+        return result
+    except Exception as e:
+        logging.error(f"Ошибка при простом поиске: {e}")
+        return []
+
+
+def search_phone_numbers(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Функция для поиска транзакций, содержащих мобильные номера.
+
+    :param transactions: Список словарей с транзакциями.
+    :return: Список транзакций, содержащих мобильные номера.
+    """
+    try:
+        phone_pattern = re.compile(r'\+7\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}[-\s]?\d{2}')
+        result = [
+            tx for tx in transactions
+            if phone_pattern.search(tx["Описание"])
+        ]
+        return result
+    except Exception as e:
+        logging.error(f"Ошибка при поиске телефонных номеров: {e}")
+        return []
+
+
+def search_physical_transfers(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Функция для поиска транзакций, относящихся к переводам физическим лицам.
+
+    :param transactions: Список словарей с транзакциями.
+    :return: Список транзакций, относящихся к переводам физическим лицам.
+    """
+    try:
+        transfer_pattern = re.compile(r'[А-Яа-яЁё]\.\s?[А-Яа-яЁё]+')
+        result = [
+            tx for tx in transactions
+            if tx["Категория"] == "Переводы" and transfer_pattern.search(tx["Описание"])
+        ]
+        return result
+    except Exception as e:
+        logging.error(f"Ошибка при поиске переводов физическим лицам: {e}")
+        return []
