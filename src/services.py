@@ -9,19 +9,11 @@ import re
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def profitable_categories(data: pd.DataFrame, year: int, month: int) -> Dict[str, float]:
-    """
-    Функция для анализа выгодности категорий повышенного кешбэка.
-
-    На вход принимает данные с транзакциями, год и месяц.
-    На выходе возвращает JSON с анализом, сколько на каждой категории можно заработать кешбэка.
-
-    :param data: Датафрейм с транзакциями.
-    :param year: Год для анализа.
-    :param month: Месяц для анализа.
-    :return: JSON с анализом кешбэка по категориям.
-    """
+def profitable_categories(data: pd.DataFrame, year: int, month: int) -> dict:
     try:
+        data["Дата операции"] = pd.to_datetime(data["Дата операции"])
+        data["Категория"] = data["Категория"].astype(str)  # Преобразуем категории в строки
+
         start_date = datetime(year, month, 1)
         if month == 12:
             end_date = datetime(year + 1, 1, 1) - pd.Timedelta(days=1)
@@ -31,10 +23,26 @@ def profitable_categories(data: pd.DataFrame, year: int, month: int) -> Dict[str
         filtered_data = data[
             (data["Дата операции"] >= start_date) &
             (data["Дата операции"] <= end_date)
-            ]
+        ]
 
-        grouped = filtered_data.groupby("Категория")["Кешбэк"].sum().reset_index()
-        result = {row["Категория"]: round(row["Кешбэк"], 2) for _, row in grouped.iterrows()}
+        if "Сумма операции" in filtered_data.columns:
+            filtered_data["Абсолютный кешбэк"] = (
+                filtered_data["Кешбэк"].abs() * filtered_data["Сумма операции"].abs() / 100
+            )
+        else:
+            filtered_data["Абсолютный кешбэк"] = filtered_data["Кешбэк"].abs()
+
+        grouped = filtered_data.groupby("Категория")["Абсолютный кешбэк"].sum().reset_index()
+        result = {row["Категория"]: round(row["Абсолютный кешбэк"], 2) for _, row in grouped.iterrows()}
+
+        expected_categories = [
+            "Супермаркеты", "Переводы", "Различные товары",
+            "Бонусы", "Кэшбэк", "Пополнение_BANK007", "Проценты_на_остаток"
+        ]
+        for category in expected_categories:
+            if category not in result:
+                result[category] = 0.0
+
         return result
     except Exception as e:
         logging.error(f"Ошибка при анализе выгодных категорий: {e}")
@@ -42,14 +50,6 @@ def profitable_categories(data: pd.DataFrame, year: int, month: int) -> Dict[str
 
 
 def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) -> float:
-    """
-    Функция для расчета суммы, которую можно отложить в «Инвесткопилку».
-
-    :param month: Месяц для которого рассчитывается отложенная сумма (формат 'YYYY-MM').
-    :param transactions: Список словарей с транзакциями.
-    :param limit: Предел, до которого нужно округлять суммы операций.
-    :return: Сумма, которую удалось бы отложить в «Инвесткопилку».
-    """
     try:
         year, month_num = map(int, month.split("-"))
         start_date = datetime(year, month_num, 1)
@@ -58,36 +58,38 @@ def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) 
         else:
             end_date = datetime(year, month_num + 1, 1) - pd.Timedelta(days=1)
 
-        filtered_transactions = [
-            tx for tx in transactions
-            if start_date <= datetime.strptime(tx["Дата операции"], "%Y-%m-%d") <= end_date
+        # Преобразуем транзакции в DataFrame для удобства
+        df = pd.DataFrame(transactions)
+        df["Дата операции"] = pd.to_datetime(df["Дата операции"])
+
+        # Фильтруем транзакции по указанному месяцу
+        filtered_transactions = df[
+            (df["Дата операции"] >= start_date) &
+            (df["Дата операции"] <= end_date)
         ]
 
-        total_invested = sum(
-            (tx["Сумма операции"] + limit - 1) // limit * limit - tx["Сумма операции"]
-            for tx in filtered_transactions
-        )
+        # Рассчитываем сумму для инвестиций
+        total_invested = 0
+        for _, tx in filtered_transactions.iterrows():
+            amount = abs(tx["Сумма операции"])  # Работаем с модулем суммы
+            if amount % limit != 0:
+                total_invested += limit - (amount % limit)
+
         return round(total_invested, 2)
     except Exception as e:
         logging.error(f"Ошибка при расчете инвестиций: {e}")
         return 0.0
 
 
-def simple_search(query: str, transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Функция для простого поиска транзакций по описанию или категории.
-
-    :param query: Строка для поиска.
-    :param transactions: Список словарей с транзакциями.
-    :return: Список транзакций, содержащих запрос в описании или категории.
-    """
+def simple_search(query: str, transactions: pd.DataFrame) -> List[Dict[str, Any]]:
     try:
         query_lower = query.lower()
-        result = [
-            tx for tx in transactions
-            if query_lower in tx["Описание"].lower() or query_lower in tx["Категория"].lower()
+        # Фильтруем DataFrame по категории
+        result = transactions[
+            transactions["Категория"].str.lower().str.contains(query_lower)
         ]
-        return result
+        # Преобразуем результат в список словарей
+        return result.to_dict("records")
     except Exception as e:
         logging.error(f"Ошибка при простом поиске: {e}")
         return []
@@ -112,20 +114,17 @@ def search_phone_numbers(transactions: List[Dict[str, Any]]) -> List[Dict[str, A
         return []
 
 
-def search_physical_transfers(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Функция для поиска транзакций, относящихся к переводам физическим лицам.
-
-    :param transactions: Список словарей с транзакциями.
-    :return: Список транзакций, относящихся к переводам физическим лицам.
-    """
+def search_physical_transfers(transactions: pd.DataFrame) -> List[Dict[str, Any]]:
     try:
-        transfer_pattern = re.compile(r'[А-Яа-яЁё]\.\s?[А-Яа-яЁё]+')
-        result = [
-            tx for tx in transactions
-            if tx["Категория"] == "Переводы" and transfer_pattern.search(tx["Описание"])
-        ]
-        return result
+        # Фильтруем транзакции по категории "Переводы"
+        result = transactions[transactions["Категория"] == "Переводы"]
+
+        # Преобразуем "Дата операции" в строку и удаляем "Номер карты"
+        result = result.drop(columns=["Номер карты"])  # Удаляем ненужную колонку
+        result["Дата операции"] = result["Дата операции"].dt.strftime("%Y-%m-%d")  # Преобразуем дату в строку
+
+        # Преобразуем результат в список словарей
+        return result.to_dict("records")
     except Exception as e:
-        logging.error(f"Ошибка при поиске переводов физическим лицам: {e}")
+        logging.error(f"Ошибка при поиске переводов: {e}")
         return []
