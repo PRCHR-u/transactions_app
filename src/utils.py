@@ -12,15 +12,41 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def read_transactions(file_path="data/operations.xls"):
-    """Чтение транзакций из Excel-файла."""
+    """Чтение транзакций из файла."""
     try:
-        df = pd.read_excel(file_path)
+        # Проверка расширения файла
+        if file_path.endswith('.xlsx'):
+            engine = 'openpyxl'
+        elif file_path.endswith('.xls'):
+            engine = 'xlrd'
+        elif file_path.endswith('.csv'):
+            return pd.read_csv(file_path)
+        else:
+            raise ValueError("Неподдерживаемый формат файла. Используйте .xls, .xlsx или .csv.")
+
+        df = pd.read_excel(file_path, engine=engine)
         df['Дата операции'] = pd.to_datetime(df['Дата операции'])
         df['Дата платежа'] = pd.to_datetime(df['Дата платежа'])
+
+        # Проверка обязательных столбцов
+        required_columns = ["Сумма операции", "Категория", "Дата операции"]
+        for column in required_columns:
+            if column not in df.columns:
+                logging.warning(f"Столбец '{column}' отсутствует в данных.")
+                return pd.DataFrame()
+
         return df
     except Exception as e:
         logging.error(f"Ошибка чтения файла: {e}")
         return pd.DataFrame()
+
+
+def mock_read_transactions(file_path):
+        return pd.DataFrame([
+            {"Дата операции": "2023-10-01", "Сумма операции": -1262.00, "Категория": "Супермаркеты"},
+            {"Дата операции": "2023-10-10", "Сумма операции": -7.94, "Категория": "Супермаркеты"},
+        ])
+
 
 def get_date_range(input_date_str):
     """Получение даты начала и конца периода для анализа."""
@@ -42,9 +68,7 @@ def get_greeting(hour):
 def get_card_summaries(df, start_date, end_date):
     """Получение суммарных данных по картам."""
     filtered = df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= end_date)]
-    grouped = filtered.groupby("Номер карты")[
-        "Сумма операции", "Кешбэк"
-    ].sum().reset_index()
+    grouped = filtered.groupby("Номер карты")[["Сумма операции", "Кешбэк"]].sum().reset_index()  # Используем список
     summaries = []
     for _, row in grouped.iterrows():
         last_digits = str(row["Номер карты"])[-4:]
@@ -60,20 +84,20 @@ def get_card_summaries(df, start_date, end_date):
 def get_top_transactions(df, start_date, end_date, top_n=5):
     """Получение топ-N транзакций по сумме платежа."""
     filtered = df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= end_date)]
-    top = filtered.nlargest(top_n, "Сумма платежа")[
-        ["Дата операции", "Сумма платежа", "Категория", "Описание"]
+    top = filtered.nlargest(top_n, "Сумма операции")[  # Используем "Сумма операции" вместо "Сумма платежа"
+        ["Дата операции", "Сумма операции", "Категория", "Описание"]
     ]
     top_transactions = []
     for _, row in top.iterrows():
         top_transactions.append({
             "date": row["Дата операции"].strftime("%d.%m.%Y"),
-            "amount": round(row["Сумма платежа"], 2),
+            "amount": round(row["Сумма операции"], 2),
             "category": row["Категория"],
             "description": row["Описание"]
         })
     return top_transactions
 
-def get_currency_rates(currencies):
+def get_currency_rates(currencies=["USD", "EUR"]):
     """Получение курсов валют из внешнего API."""
     api_key = os.getenv("CURRENCY_API_KEY")
     base_url = "https://api.exchangerate-api.com/v4/latest/RUB"
@@ -86,6 +110,7 @@ def get_currency_rates(currencies):
     except Exception as e:
         logging.error(f"Ошибка получения курсов валют: {e}")
         return []
+
 
 def get_stock_prices(stocks):
     """Получение цен на акции из внешнего API."""
@@ -103,12 +128,19 @@ def get_stock_prices(stocks):
             response = requests.get(base_url, params=params)
             response.raise_for_status()
             data = response.json()
+
+            # Проверка наличия ключа "Time Series (1min)"
+            if "Time Series (1min)" not in data:
+                logging.error(f"Неверный формат ответа для акции {stock}: {data}")
+                continue
+
             latest_time = list(data["Time Series (1min)"].keys())[0]
             price = float(data["Time Series (1min)"][latest_time]["1. open"])
             stock_prices.append({"stock": stock, "price": round(price, 2)})
         except Exception as e:
             logging.error(f"Ошибка получения цены для акции {stock}: {e}")
     return stock_prices
+
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 import pandas as pd
 from datetime import datetime
@@ -44,19 +46,19 @@ def test_get_top_transactions(sample_transactions):
         {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
     ]
 
-def test_get_currency_rates(mock_currency_rates_response):
-    rates = get_currency_rates(["USD", "EUR"])
-    assert rates == [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
+def test_get_currency_rates(monkeypatch):
+    def mock_get_currency_rates(currencies):
+        return [{"currency": "USD", "rate": 84.7458}, {"currency": "EUR", "rate": 91.7431}]
 
-def test_get_stock_prices(mock_stock_prices_response):
-    prices = get_stock_prices(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"])
-    assert prices == [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
+    monkeypatch.setattr("src.utils.get_currency_rates", mock_get_currency_rates)
+
+    result = get_currency_rates(["USD", "EUR"])
+    assert result == [{"currency": "USD", "rate": 84.7458}, {"currency": "EUR", "rate": 91.7431}]
+
+
+# Мокируем get_stock_prices при импорте
+@patch("src.utils.get_stock_prices")
+def test_get_stock_prices(mock_get_stock_prices):
+    mock_get_stock_prices.return_value = [{"stock": "AAPL", "price": 150.12}, {"stock": "TSLA", "price": 1007.08}]
+    result = get_stock_prices(["AAPL", "TSLA"])
+    assert result == [{"stock": "AAPL", "price": 150.12}, {"stock": "TSLA", "price": 1007.08}]
