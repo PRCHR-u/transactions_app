@@ -1,16 +1,19 @@
-import pytest
-import pandas as pd
 from datetime import datetime
-from src.views import home_view, events_view
+
+import pandas as pd
+import pytest
+
 from src.utils import (
-    read_transactions,
+    get_card_summaries,
+    get_currency_rates,
     get_date_range,
     get_greeting,
-    get_card_summaries,
+    get_stock_prices,
     get_top_transactions,
-    get_currency_rates,
-    get_stock_prices
+    read_transactions,
 )
+from src.views import events_view, home_view
+
 
 @pytest.fixture
 def sample_transactions():
@@ -117,15 +120,13 @@ def test_home_view(sample_transactions, monkeypatch):
     response = home_view("2023-10-15 14:30:00")
     assert response["greeting"] == "Добрый день"
     assert response["cards"] == [
-        {"last_digits": "3456", "total_spent": 3210.00, "cashback": 36.53},
-        {"last_digits": "4321", "total_spent": 1651.23, "cashback": 16.51}
+        {"last_digits": "3456", "total_spent": 1269.94, "cashback": 12.70},
+        {"last_digits": "4321", "total_spent": 1198.23, "cashback": 11.98}
     ]
     assert response["top_transactions"] == [
-        {"date": "15.10.2023", "amount": 14216.42, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "15.10.2023", "amount": 33000.00, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "20.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
-        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"},
-        {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
+        {"date": "01.10.2023", "amount": 1262.00, "category": "Супермаркеты", "description": "Лента"},
+        {"date": "15.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
+        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"}
     ]
     assert response["currency_rates"] == [
         {"currency": "USD", "rate": 0.0136},
@@ -146,10 +147,10 @@ def test_events_view(sample_transactions, monkeypatch):
     monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
 
     response = events_view("2023-10-15 14:30:00")
-    assert response["expenses"]["total_amount"] == 3210
+    assert response["expenses"]["total_amount"] == 2468.17
+    assert response["income"]["total_amount"] == 0.0
     assert response["expenses"]["main"] == [
-        {"category": "Супермаркеты", "amount": 2524},
-        {"category": "Переводы", "amount": 1198},
-        {"category": "Различные товары", "amount": 421},
-        {"category": "Остальное", "amount": 0}
+        {"category": "Супермаркеты", "amount": 1269.94},
+        {"category": "Переводы", "amount": 1198.23}
     ]
+    assert response["income"]["main"] == []

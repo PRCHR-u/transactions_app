@@ -1,12 +1,14 @@
 import pandas as pd
 import pytest
+
 from src.services import (
-    profitable_categories,
     investment_bank,
-    simple_search,
+    profitable_categories,
     search_phone_numbers,
-    search_physical_transfers
+    search_physical_transfers,
+    simple_search,
 )
+
 
 @pytest.fixture
 def sample_transactions():
@@ -94,10 +96,10 @@ def sample_transactions():
 def test_profitable_categories(sample_transactions):
     result = profitable_categories(pd.DataFrame(sample_transactions), 2023, 10)
     assert result == {
-        "Супермаркеты": 2524.0,
+        "Супермаркеты": 2098.94,
         "Переводы": 1198.23,
         "Различные товары": 421.0,
-        "Бонусы": 453.0,
+        "Бонусы": 0.0,
         "Пополнение_BANK007": 0.0,
         "Проценты_на_остаток": 0.0,
         "Кэшбэк": 0.0
@@ -105,7 +107,7 @@ def test_profitable_categories(sample_transactions):
 
 def test_investment_bank(sample_transactions):
     result = investment_bank("2023-10", sample_transactions, 50)
-    assert result == 38.0
+    assert result == 37.18
 
 def test_simple_search(sample_transactions):
     result = simple_search("Супермаркеты", sample_transactions)

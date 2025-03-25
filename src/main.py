@@ -1,10 +1,15 @@
 import json
 
-from src.services import profitable_categories, investment_bank, simple_search, search_phone_numbers, \
-    search_physical_transfers
-from views import home_view, events_view
-from utils import read_transactions
 from reports import spending_by_category, spending_by_weekday, spending_by_workday
+from src.services import (
+    investment_bank,
+    profitable_categories,
+    search_phone_numbers,
+    search_physical_transfers,
+    simple_search,
+)
+from utils import read_transactions
+from views import events_view, home_view
 
 
 def main():

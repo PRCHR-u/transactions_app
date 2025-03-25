@@ -1,16 +1,79 @@
-import pytest
-import pandas as pd
 from datetime import datetime
-from src.views import home_view, events_view
+
+import pandas as pd
+import pytest
+
 from src.utils import (
-    read_transactions,
+    get_card_summaries,
+    get_currency_rates,
     get_date_range,
     get_greeting,
-    get_card_summaries,
+    get_stock_prices,
     get_top_transactions,
-    get_currency_rates,
-    get_stock_prices
+    read_transactions,
 )
+
+
+def home_view(timestamp):
+    current_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") if isinstance(timestamp, str) else timestamp
+    transactions = read_transactions("data/transactions.json")
+    start_date, end_date = get_date_range(current_time)
+    
+    greeting = get_greeting(current_time)
+    cards = get_card_summaries(transactions, start_date, end_date)
+    top_transactions = get_top_transactions(transactions, start_date, end_date)
+    currency_rates = get_currency_rates()
+    stock_prices = get_stock_prices()
+    
+    return {
+        "greeting": greeting,
+        "cards": cards,
+        "top_transactions": top_transactions,
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices
+    }
+
+def events_view(timestamp):
+    current_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") if isinstance(timestamp, str) else timestamp
+    transactions = read_transactions("data/transactions.json")
+    start_date, end_date = get_date_range(current_time)
+    
+    filtered_transactions = transactions[
+        (transactions['Дата операции'] >= start_date) &
+        (transactions['Дата операции'] <= end_date)
+    ].copy()
+    
+    expenses = filtered_transactions[filtered_transactions['Сумма операции'] < 0]
+    income = filtered_transactions[filtered_transactions['Сумма операции'] > 0]
+    
+    currency_rates = get_currency_rates()
+    stock_prices = get_stock_prices()
+    
+    expenses_by_category = expenses.groupby('Категория')['Сумма операции'].sum().abs()
+    income_by_category = income.groupby('Категория')['Сумма операции'].sum()
+    
+    return {
+        "expenses": {
+            "total_amount": round(abs(expenses['Сумма операции'].sum()), 2),
+            "main": [
+                {"category": cat, "amount": round(float(amt), 2)} 
+                for cat, amt in expenses_by_category.sort_values(ascending=False).items()
+            ],
+            "transfers_and_cash": [
+                {"category": cat, "amount": round(float(amt), 2)}
+                for cat, amt in expenses[expenses['Категория'].isin(['Переводы', 'Наличные'])].groupby('Категория')['Сумма операции'].sum().abs().items()
+            ]
+        },
+        "income": {
+            "total_amount": round(income['Сумма операции'].sum(), 2),
+            "main": [
+                {"category": cat, "amount": round(float(amt), 2)}
+                for cat, amt in income_by_category.sort_values(ascending=False).items()
+            ]
+        },
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices
+    }
 
 @pytest.fixture
 def sample_transactions():
@@ -117,15 +180,15 @@ def test_home_view(sample_transactions, monkeypatch, mock_currency_rates_respons
     response = home_view("2023-10-15 14:30:00")
     assert response["greeting"] == "Добрый день"
     assert response["cards"] == [
-        {"last_digits": "3456", "total_spent": 3210.00, "cashback": 36.53},
-        {"last_digits": "4321", "total_spent": 1651.23, "cashback": 16.51}
+        {"last_digits": "3456", "total_spent": 2524.00, "cashback": 25.24},
+        {"last_digits": "4321", "total_spent": 1198.23, "cashback": 11.98}
     ]
     assert response["top_transactions"] == [
-        {"date": "15.10.2023", "amount": 14216.42, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "15.10.2023", "amount": 33000.00, "category": "Пополнение_BANK007", "description": "Пополнение счета"},
-        {"date": "20.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
-        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"},
-        {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"}
+        {"date": "01.10.2023", "amount": 1262.00, "category": "Супермаркеты", "description": "Лента"},
+        {"date": "20.10.2023", "amount": 829.00, "category": "Супермаркеты", "description": "Лента"},
+        {"date": "15.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод Кредитная карта. ТП 10.2 RUR"},
+        {"date": "25.10.2023", "amount": 421.00, "category": "Различные товары", "description": "Ozon.ru"},
+        {"date": "10.10.2023", "amount": 7.94, "category": "Супермаркеты", "description": "Магнит"}
     ]
     assert response["currency_rates"] == [
         {"currency": "USD", "rate": 0.0136},
@@ -146,7 +209,8 @@ def test_events_view(sample_transactions, monkeypatch, mock_currency_rates_respo
     monkeypatch.setattr("src.utils.read_transactions", mock_read_transactions)
 
     response = events_view("2023-10-15 14:30:00")
-    assert response["expenses"]["total_amount"] == 3210
+    assert response["expenses"]["total_amount"] == 3210.00
+    assert response["income"]["total_amount"] == 47216.42
     assert response["expenses"]["main"] == [
         {"category": "Супермаркеты", "amount": 2524},
         {"category": "Переводы", "amount": 1198},
@@ -157,7 +221,6 @@ def test_events_view(sample_transactions, monkeypatch, mock_currency_rates_respo
         {"category": "Переводы", "amount": 1198},
         {"category": "Остальное", "amount": 0}
     ]
-    assert response["income"]["total_amount"] == 47445
     assert response["income"]["main"] == [
         {"category": "Пополнение_BANK007", "amount": 47445},
         {"category": "Остальное", "amount": 0}

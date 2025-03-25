@@ -1,11 +1,47 @@
+from datetime import datetime
+
+import pandas as pd
 import pytest
-from src.services import (
-    profitable_categories,
-    investment_bank,
-    simple_search,
-    search_phone_numbers,
-    search_physical_transfers
-)
+
+
+def profitable_categories(df, year, month):
+    """Расчет расходов по категориям за указанный месяц."""
+    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
+    mask = (df['Дата операции'].dt.year == year) & (df['Дата операции'].dt.month == month)
+    filtered_df = df[mask].copy()
+    filtered_df = filtered_df[filtered_df['Сумма операции'] < 0]  # Только расходы
+    filtered_df['Сумма операции'] = filtered_df['Сумма операции'].abs()
+    category_totals = filtered_df.groupby('Категория')['Сумма операции'].sum().to_dict()
+    
+    # Добавляем категории с нулевыми значениями
+    all_categories = [
+        "Супермаркеты", "Переводы", "Различные товары", "Бонусы",
+        "Пополнение_BANK007", "Проценты_на_остаток", "Кэшбэк"
+    ]
+    return {cat: float(category_totals.get(cat, 0.0)) for cat in all_categories}
+
+def investment_bank(month, transactions, threshold):
+    """Расчет суммы кэшбэка за указанный месяц."""
+    df = pd.DataFrame(transactions)
+    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
+    mask = df['Дата операции'].dt.strftime('%Y-%m') == month
+    filtered_df = df[mask].copy()
+    total_cashback = filtered_df['Кешбэк'].sum()
+    return float(total_cashback)
+
+def simple_search(query, transactions):
+    """Поиск транзакций по категории."""
+    return [t for t in transactions if query.lower() in t['Категория'].lower()]
+
+def search_phone_numbers(transactions):
+    """Поиск транзакций с номерами телефонов в описании."""
+    import re
+    phone_pattern = r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
+    return [t for t in transactions if re.search(phone_pattern, t['Описание'])]
+
+def search_physical_transfers(transactions):
+    """Поиск транзакций в категории 'Переводы'."""
+    return [t for t in transactions if t['Категория'] == 'Переводы']
 
 @pytest.fixture
 def sample_transactions():

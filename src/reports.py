@@ -1,10 +1,40 @@
-import pytest
+from datetime import datetime
+
 import pandas as pd
-from src.reports import (
-    spending_by_category,
-    spending_by_weekday,
-    spending_by_workday
-)
+import pytest
+
+
+def spending_by_category(df, category, date=None):
+    """Расчет расходов по категории."""
+    if date:
+        df = df[df['Дата операции'].dt.strftime('%Y-%m-%d') <= date].copy()
+    df_filtered = df[df['Категория'] == category]
+    df_filtered = df_filtered[df_filtered['Сумма операции'] < 0]  # Только расходы
+    category_spending = abs(df_filtered['Сумма операции'].sum())
+    return {"category": category, "total": float(category_spending)}
+
+def spending_by_weekday(df, date=None):
+    """Расчет расходов по дням недели."""
+    if date:
+        df = df[df['Дата операции'].dt.strftime('%Y-%m-%d') <= date].copy()
+    df = df[df['Сумма операции'] < 0]  # Только расходы
+    weekday_spending = df.groupby(df['Дата операции'].dt.day_name())['Сумма операции'].sum().abs()
+    weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    result = {day: float(weekday_spending.get(day, 0.0)) for day in weekdays}
+    return result
+
+def spending_by_workday(df, date=None):
+    """Расчет расходов по рабочим и выходным дням."""
+    if date:
+        df = df[df['Дата операции'].dt.strftime('%Y-%m-%d') <= date].copy()
+    df = df[df['Сумма операции'] < 0]  # Только расходы
+    is_weekend = df['Дата операции'].dt.dayofweek.isin([5, 6])
+    workday_spending = abs(df[~is_weekend]['Сумма операции'].sum())
+    weekend_spending = abs(df[is_weekend]['Сумма операции'].sum())
+    return {
+        "Рабочий день": float(workday_spending),
+        "Выходной день": float(weekend_spending)
+    }
 
 @pytest.fixture
 def sample_transactions():
