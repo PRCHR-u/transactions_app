@@ -33,61 +33,62 @@ def get_date_range(input_date):
     if isinstance(input_date, str):
         input_date = datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S")
     start_date = input_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return start_date, input_date
+    return json.dumps({
+        "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_date": input_date.strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 def get_greeting(hour):
     """Получение приветствия в зависимости от часа."""
     hour_num = hour.hour if isinstance(hour, datetime) else hour
     if 5 <= hour_num < 12:
-        return "Доброе утро"
+        greeting = "Доброе утро"
     elif 12 <= hour_num < 18:
-        return "Добрый день"
+        greeting = "Добрый день"
     elif 18 <= hour_num < 23:
-        return "Добрый вечер"
+        greeting = "Добрый вечер"
     else:
-        return "Доброй ночи"
+        greeting = "Доброй ночи"
+    return json.dumps({"greeting": greeting})
 
-def get_card_summaries(df, start_date=None, end_date=None):
+def get_card_summaries(transactions, start_date, end_date):
     """Получение суммарных данных по картам."""
-    if start_date is not None and end_date is not None:
-        filtered = df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= end_date)].copy()
-    else:
-        filtered = df.copy()
+    filtered_transactions = transactions[
+        (transactions['Дата операции'] >= start_date) &
+        (transactions['Дата операции'] <= end_date)
+    ]
     
-    filtered = filtered[filtered['Сумма операции'] < 0]  # Только расходы
-    summaries = []
-    for card in filtered["Номер карты"].unique():
-        card_data = filtered[filtered["Номер карты"] == card]
-        last_digits = str(card)[-4:]
-        total_spent = abs(card_data["Сумма операции"].sum())
-        cashback = card_data["Кешбэк"].sum()
-        summaries.append({
-            "last_digits": last_digits,
+    card_summaries = []
+    for card in filtered_transactions['Номер карты'].unique():
+        card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
+        total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
+        total_cashback = card_transactions['Кешбэк'].sum()
+        card_summaries.append({
+            "last_digits": card[-4:],
             "total_spent": round(float(total_spent), 2),
-            "cashback": round(float(cashback), 2)
+            "cashback": round(float(total_cashback), 2)
         })
-    return sorted(summaries, key=lambda x: (-x["total_spent"], x["last_digits"]))
-
-def get_top_transactions(df, start_date=None, end_date=None, top_n=5):
-    """Получение топ-N транзакций по сумме операции."""
-    if start_date is not None and end_date is not None:
-        filtered = df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= end_date)].copy()
-    else:
-        filtered = df.copy()
     
-    filtered = filtered[filtered["Сумма операции"] < 0]  # Только расходы
-    filtered = filtered.sort_values("Сумма операции", ascending=True)  # Сортировка по возрастанию (от больших расходов)
-    top = filtered.head(top_n)
+    return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
+
+def get_top_transactions(transactions, start_date, end_date):
+    """Получение топ транзакций по сумме операции."""
+    filtered_transactions = transactions[
+        (transactions['Дата операции'] >= start_date) &
+        (transactions['Дата операции'] <= end_date) &
+        (transactions['Сумма операции'] < 0)
+    ].sort_values('Сумма операции', ascending=True)
     
     top_transactions = []
-    for _, row in top.iterrows():
+    for _, row in filtered_transactions.iterrows():
         top_transactions.append({
-            "date": row["Дата операции"].strftime("%d.%m.%Y"),
-            "amount": round(float(abs(row["Сумма операции"])), 2),
-            "category": row["Категория"],
-            "description": row["Описание"]
+            "date": row['Дата операции'].strftime('%d.%m.%Y'),
+            "amount": round(float(abs(row['Сумма операции'])), 2),
+            "category": row['Категория'],
+            "description": row['Описание']
         })
-    return sorted(top_transactions, key=lambda x: (-x["amount"], x["date"]))
+    
+    return json.dumps(sorted(top_transactions, key=lambda x: (-x["amount"], x["date"])))
 
 def get_currency_rates(currencies=None):
     """Получение курсов валют."""
@@ -100,10 +101,11 @@ def get_currency_rates(currencies=None):
         "EUR": 0.0115
     }
     
-    return [{"currency": c, "rate": test_rates[c]} for c in currencies]
+    rates = [{"currency": c, "rate": test_rates[c]} for c in currencies]
+    return json.dumps(rates)
 
 def get_stock_prices(stocks=None):
-    """Получение цен на акции."""
+    """Получение цен акций."""
     if stocks is None:
         stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
     
@@ -116,7 +118,8 @@ def get_stock_prices(stocks=None):
         "TSLA": 1007.08
     }
     
-    return [{"stock": stock, "price": test_prices[stock]} for stock in stocks]
+    prices = [{"stock": s, "price": test_prices[s]} for s in stocks]
+    return json.dumps(prices)
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""

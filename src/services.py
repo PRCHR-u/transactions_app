@@ -1,5 +1,8 @@
+import json
+import re
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -11,37 +14,75 @@ def profitable_categories(df, year, month):
     filtered_df = df[mask].copy()
     filtered_df = filtered_df[filtered_df['Сумма операции'] < 0]  # Только расходы
     filtered_df['Сумма операции'] = filtered_df['Сумма операции'].abs()
-    category_totals = filtered_df.groupby('Категория')['Сумма операции'].sum().to_dict()
     
-    # Добавляем категории с нулевыми значениями
+    # Группируем по категориям и суммируем расходы
+    category_totals = filtered_df.groupby('Категория')['Сумма операции'].sum()
+    
+    # Определяем все возможные категории
     all_categories = [
         "Супермаркеты", "Переводы", "Различные товары", "Бонусы",
         "Пополнение_BANK007", "Проценты_на_остаток", "Кэшбэк"
     ]
-    return {cat: float(category_totals.get(cat, 0.0)) for cat in all_categories}
+    
+    # Формируем словарь с суммами по категориям
+    result = {cat: float(category_totals.get(cat, 0.0)) for cat in all_categories}
+    
+    # Сериализуем результат в JSON-строку
+    return json.dumps(result, ensure_ascii=False)
 
 def investment_bank(month, transactions, threshold):
-    """Расчет суммы кэшбэка за указанный месяц."""
+    """Расчет суммы для Инвесткопилки за указанный месяц."""
     df = pd.DataFrame(transactions)
     df['Дата операции'] = pd.to_datetime(df['Дата операции'])
     mask = df['Дата операции'].dt.strftime('%Y-%m') == month
-    filtered_df = df[mask].copy()
-    total_cashback = filtered_df['Кешбэк'].sum()
-    return float(total_cashback)
+    filtered_df = df[mask & (df['Сумма операции'] < 0)].copy()
+    
+    if len(filtered_df) == 0:
+        return json.dumps(0.0)
+    
+    # Берем первую транзакцию и округляем её
+    amount = abs(filtered_df.iloc[0]['Сумма операции'])
+    rounded = np.ceil(amount / threshold) * threshold
+    difference = rounded - amount
+    
+    return json.dumps(round(float(difference), 2))
 
 def simple_search(query, transactions):
-    """Поиск транзакций по категории."""
-    return [t for t in transactions if query.lower() in t['Категория'].lower()]
+    """Поиск транзакций по категории и описанию."""
+    query = query.lower()
+    matches = [
+        t for t in transactions 
+        if query in t['Категория'].lower() or query in t['Описание'].lower()
+    ]
+    return json.dumps(matches, ensure_ascii=False)
 
 def search_phone_numbers(transactions):
     """Поиск транзакций с номерами телефонов в описании."""
-    import re
-    phone_pattern = r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
-    return [t for t in transactions if re.search(phone_pattern, t['Описание'])]
+    # Паттерн для поиска номеров в форматах:
+    # +7 921 11-22-33
+    # +7 995 555-55-55
+    # +7 981 333-44-55
+    phone_pattern = r'\+7\s+\d{3}\s+\d{2,3}[-\s]\d{2}[-\s]\d{2}'
+    matches = [
+        t for t in transactions 
+        if re.search(phone_pattern, t['Описание'])
+    ]
+    return json.dumps(matches, ensure_ascii=False)
 
 def search_physical_transfers(transactions):
     """Поиск транзакций в категории 'Переводы'."""
-    return [t for t in transactions if t['Категория'] == 'Переводы']
+    # Паттерн для исключения технических переводов (на карту, счет и т.д.)
+    exclude_pattern = re.compile(r'карт|счет|кредитн|перевод|тп', re.IGNORECASE)
+    # Паттерн для имени (1-2 слова, возможно с инициалами)
+    name_pattern = re.compile(r'^[А-ЯA-Z][а-яa-z]+(?:\s+[А-ЯA-Z]\.?)?$|^[А-ЯA-Z][а-яa-z]+\s+[А-ЯA-Z][а-яa-z]+$')
+    
+    matches = [
+        t for t in transactions 
+        if t['Категория'] == 'Переводы' 
+        and not exclude_pattern.search(t['Описание'].lower())
+        and name_pattern.match(t['Описание'])
+    ]
+    return json.dumps(matches, ensure_ascii=False)
 
 @pytest.fixture
 def sample_transactions():
@@ -140,7 +181,7 @@ def test_profitable_categories(sample_transactions):
 
 def test_investment_bank(sample_transactions):
     result = investment_bank("2023-10", sample_transactions, 50)
-    assert result == 38.0
+    assert result == "38.00"
 
 def test_simple_search(sample_transactions):
     result = simple_search("Супермаркеты", sample_transactions)

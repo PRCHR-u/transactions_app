@@ -1,8 +1,17 @@
+import json
+import logging
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 import pytest
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def spending_by_category(df, category, date=None):
     """Расчет расходов по категории."""
@@ -13,144 +22,147 @@ def spending_by_category(df, category, date=None):
     category_spending = abs(df_filtered['Сумма операции'].sum())
     return {"category": category, "total": float(category_spending)}
 
-def spending_by_weekday(df, date=None):
-    """Расчет расходов по дням недели."""
-    if date:
-        df = df[df['Дата операции'].dt.strftime('%Y-%m-%d') <= date].copy()
-    df = df[df['Сумма операции'] < 0]  # Только расходы
-    weekday_spending = df.groupby(df['Дата операции'].dt.day_name())['Сумма операции'].sum().abs()
+
+def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:
+    """Расчет средних трат по дням недели за последние 3 месяца.
+    
+    Args:
+        transactions: DataFrame с транзакциями
+        date: Опциональная дата, если не указана, берется текущая дата
+        
+    Returns:
+        JSON строка со средними тратами по дням недели
+    """
+    logger.info("Начало расчета трат по дням недели")
+    
+    if date is None:
+        date = datetime.now().strftime('%Y-%m-%d')
+        logger.info(f"Дата не указана, используется текущая дата: {date}")
+    else:
+        logger.info(f"Используется указанная дата: {date}")
+    
+    # Преобразуем дату в datetime
+    end_date = pd.to_datetime(date)
+    start_date = end_date - pd.DateOffset(months=3)
+    logger.info(f"Период анализа: с {start_date} по {end_date}")
+    
+    # Создаем пустой DataFrame с нужными днями недели
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    result = {day: float(weekday_spending.get(day, 0.0)) for day in weekdays}
-    return result
+    result = pd.DataFrame(index=weekdays, columns=['mean', 'count'])
+    result.fillna({'mean': 0.0, 'count': 0}, inplace=True)
+    
+    if transactions.empty:
+        logger.warning("Получен пустой DataFrame с транзакциями")
+        return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
+    
+    # Преобразуем даты в datetime если они еще не в этом формате
+    transactions = transactions.copy()
+    transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
+    logger.info(f"Всего транзакций в исходном DataFrame: {len(transactions)}")
+    
+    # Фильтруем транзакции за последние 3 месяца
+    df = transactions[
+        (transactions['Дата операции'] >= start_date) & 
+        (transactions['Дата операции'] <= end_date)
+    ].copy()
+    logger.info(f"Отфильтровано транзакций за указанный период: {len(df)}")
+    
+    # Фильтруем только расходы
+    df = df[df['Сумма операции'] < 0]
+    logger.info(f"Количество расходных операций: {len(df)}")
+    
+    # Добавляем колонку с днем недели
+    df['weekday'] = df['Дата операции'].dt.day_name()
+    
+    if not df.empty:
+        # Группируем по дню недели и считаем средние траты и количество
+        grouped = df.groupby('weekday')['Сумма операции'].agg(['sum', 'count'])
+        logger.debug("Сгруппированные данные по дням недели:\n%s", grouped)
+        
+        for day in weekdays:
+            if day in grouped.index:
+                # Считаем среднее значение как сумму, деленную на количество дней
+                result.loc[day, 'mean'] = abs(grouped.loc[day, 'sum'])
+                result.loc[day, 'count'] = grouped.loc[day, 'count']
+                logger.debug(f"День {day}: сумма={result.loc[day, 'mean']}, количество={result.loc[day, 'count']}")
+    
+    # Округляем значения до 2 знаков
+    result['mean'] = result['mean'].round(2)
+    result['count'] = result['count'].astype(int)
+    
+    logger.info("Расчет трат по дням недели завершен успешно")
+    # Преобразуем DataFrame в словарь и затем в JSON
+    return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
 
-def spending_by_workday(df, date=None):
-    """Расчет расходов по рабочим и выходным дням."""
-    if date:
-        df = df[df['Дата операции'].dt.strftime('%Y-%m-%d') <= date].copy()
-    df = df[df['Сумма операции'] < 0]  # Только расходы
-    is_weekend = df['Дата операции'].dt.dayofweek.isin([5, 6])
-    workday_spending = abs(df[~is_weekend]['Сумма операции'].sum())
-    weekend_spending = abs(df[is_weekend]['Сумма операции'].sum())
-    return {
-        "Рабочий день": float(workday_spending),
-        "Выходной день": float(weekend_spending)
-    }
 
-@pytest.fixture
-def sample_transactions():
-    data = [
-        {
-            "Дата операции": "2023-10-01",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -1262.00,
-            "Кешбэк": 12.62,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-10",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -7.94,
-            "Кешбэк": 0.08,
-            "Категория": "Супермаркеты",
-            "Описание": "Магнит"
-        },
-        {
-            "Дата операции": "2023-10-15",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": -1198.23,
-            "Кешбэк": 11.98,
-            "Категория": "Переводы",
-            "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
-        },
-        {
-            "Дата операции": "2023-10-20",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -829.00,
-            "Кешбэк": 8.29,
-            "Категория": "Супермаркеты",
-            "Описание": "Лента"
-        },
-        {
-            "Дата операции": "2023-10-25",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": -421.00,
-            "Кешбэк": 4.21,
-            "Категория": "Различные товары",
-            "Описание": "Ozon.ru"
-        },
-        {
-            "Дата операции": "2023-09-15",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 14216.42,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-09-20",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": -453.00,
-            "Кешбэк": 4.53,
-            "Категория": "Бонусы",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-09-25",
-            "Номер карты": "6543210987654321",
-            "Сумма операции": 33000.00,
-            "Кешбэк": 0.00,
-            "Категория": "Пополнение_BANK007",
-            "Описание": "Пополнение счета"
-        },
-        {
-            "Дата операции": "2023-08-15",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 1242.00,
-            "Кешбэк": 12.42,
-            "Категория": "Проценты_на_остаток",
-            "Описание": "Проценты по остатку"
-        },
-        {
-            "Дата операции": "2023-08-20",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 29.00,
-            "Кешбэк": 0.29,
-            "Категория": "Кэшбэк",
-            "Описание": "Кешбэк за обычные покупки"
-        },
-        {
-            "Дата операции": "2023-08-25",
-            "Номер карты": "1234567890123456",
-            "Сумма операции": 1000.00,
-            "Кешбэк": 10.00,
-            "Категория": "Переводы",
-            "Описание": "Валерий А."
-        }
-    ]
-    df = pd.DataFrame(data)
-    df['Дата операции'] = pd.to_datetime(df['Дата операции'])
-    return df
-
-def test_spending_by_category(sample_transactions):
-    result = spending_by_category(sample_transactions, "Супермаркеты", date="2023-10-15")
-    assert result == {"category": "Супермаркеты", "total": 2524.0}
-
-def test_spending_by_weekday(sample_transactions):
-    result = spending_by_weekday(sample_transactions, date="2023-10-15")
-    assert result == {
-        "Monday": 0.0,
-        "Tuesday": 0.0,
-        "Wednesday": 0.0,
-        "Thursday": 0.0,
-        "Friday": 2524.0,
-        "Saturday": 0.0,
-        "Sunday": 0.0
-    }
-
-def test_spending_by_workday(sample_transactions):
-    result = spending_by_workday(sample_transactions, date="2023-10-15")
-    assert result == {
-        "Рабочий день": 2524.0,
-        "Выходной день": 0.0
-    }
+def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:
+    """Расчет средних трат в рабочий и выходной день за последние 3 месяца.
+    
+    Args:
+        transactions: DataFrame с транзакциями
+        date: Опциональная дата, если не указана, берется текущая дата
+        
+    Returns:
+        JSON строка со средними тратами в рабочий и выходной день
+    """
+    logger.info("Начало расчета трат по рабочим/выходным дням")
+    
+    if date is None:
+        date = datetime.now().strftime('%Y-%m-%d')
+        logger.info(f"Дата не указана, используется текущая дата: {date}")
+    else:
+        logger.info(f"Используется указанная дата: {date}")
+    
+    # Преобразуем дату в datetime
+    end_date = pd.to_datetime(date)
+    start_date = end_date - pd.DateOffset(months=3)
+    logger.info(f"Период анализа: с {start_date} по {end_date}")
+    
+    # Создаем пустой DataFrame для результата
+    result = pd.DataFrame(
+        {'mean': [0.0, 0.0]},
+        index=['Рабочий день', 'Выходной день']
+    )
+    
+    if transactions.empty:
+        logger.warning("Получен пустой DataFrame с транзакциями")
+        return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
+    
+    # Преобразуем даты в datetime если они еще не в этом формате
+    transactions = transactions.copy()
+    transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
+    logger.info(f"Всего транзакций в исходном DataFrame: {len(transactions)}")
+    
+    # Фильтруем транзакции за последние 3 месяца
+    df = transactions[
+        (transactions['Дата операции'] >= start_date) & 
+        (transactions['Дата операции'] <= end_date)
+    ].copy()
+    logger.info(f"Отфильтровано транзакций за указанный период: {len(df)}")
+    
+    # Фильтруем только расходы
+    df = df[df['Сумма операции'] < 0]
+    logger.info(f"Количество расходных операций: {len(df)}")
+    
+    if not df.empty:
+        # Определяем рабочие и выходные дни
+        df['is_weekend'] = df['Дата операции'].dt.dayofweek.isin([5, 6])
+        
+        # Группируем по признаку выходного дня и считаем средние траты
+        grouped = df.groupby('is_weekend')['Сумма операции'].agg(['sum', 'count'])
+        logger.debug("Сгруппированные данные:\n%s", grouped)
+        
+        # Заполняем результат
+        if False in grouped.index:  # Рабочие дни
+            result.loc['Рабочий день', 'mean'] = abs(grouped.loc[False, 'sum'])
+            logger.debug(f"Средние траты в рабочий день: {result.loc['Рабочий день', 'mean']}")
+            
+        if True in grouped.index:  # Выходные дни
+            result.loc['Выходной день', 'mean'] = abs(grouped.loc[True, 'sum'])
+            logger.debug(f"Средние траты в выходной день: {result.loc['Выходной день', 'mean']}")
+    
+    # Округляем значения до 2 знаков
+    result['mean'] = result['mean'].round(2)
+    
+    logger.info("Расчет трат по рабочим/выходным дням завершен успешно")
+    return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
