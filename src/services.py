@@ -1,5 +1,6 @@
 import json
 import re
+import logging
 from datetime import datetime
 
 import numpy as np
@@ -56,18 +57,25 @@ def simple_search(query, transactions):
     ]
     return json.dumps(matches, ensure_ascii=False)
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def search_phone_numbers(transactions):
     """Поиск транзакций с номерами телефонов в описании."""
-    # Паттерн для поиска номеров в форматах:
-    # +7 921 11-22-33
-    # +7 995 555-55-55
-    # +7 981 333-44-55
-    phone_pattern = r'\+7\s+\d{3}\s+\d{2,3}[-\s]\d{2}[-\s]\d{2}'
-    matches = [
-        t for t in transactions 
-        if re.search(phone_pattern, t['Описание'])
-    ]
-    return json.dumps(matches, ensure_ascii=False)
+    logging.info("Вызвана функция search_phone_numbers")
+    try:
+        # Паттерн для поиска номеров в форматах:
+        # +7 921 11-22-33
+        # +7 995 555-55-55
+        # +7 981 333-44-55
+        phone_pattern = r'\+7\s+\d{3}\s+\d{2,3}[-\s]\d{2}[-\s]\d{2}'
+        matches = [
+            t for t in transactions
+            if re.search(phone_pattern, t['Описание'])
+        ]
+        return json.dumps(matches, ensure_ascii=False)
+    except Exception as e:
+        logging.error(f"Ошибка в функции search_phone_numbers: {e}")
+        return json.dumps([], ensure_ascii=False)
 
 def search_physical_transfers(transactions):
     """Поиск транзакций в категории 'Переводы'."""

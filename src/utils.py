@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
+import yfinance as yf
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,6 +31,7 @@ def read_transactions(file_path="data/transactions.json"):
 
 def get_date_range(input_date):
     """Получение даты начала и конца периода для анализа."""
+    logging.info("Вызвана функция get_date_range")
     if isinstance(input_date, str):
         input_date = datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S")
     start_date = input_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -38,43 +40,55 @@ def get_date_range(input_date):
         "end_date": input_date.strftime("%Y-%m-%d %H:%M:%S")
     })
 
-def get_greeting(hour):
+
+def get_greeting():
     """Получение приветствия в зависимости от часа."""
-    hour_num = hour.hour if isinstance(hour, datetime) else hour
-    if 5 <= hour_num < 12:
-        greeting = "Доброе утро"
-    elif 12 <= hour_num < 18:
-        greeting = "Добрый день"
-    elif 18 <= hour_num < 23:
-        greeting = "Добрый вечер"
+    logging.info("Вызвана функция get_greeting")
+    try:
+        current_hour = datetime.now().hour
+        if 5 <= current_hour < 12:
+            greeting = "Доброе утро"
+        elif 12 <= current_hour < 18:
+            greeting = "Добрый день"
+        elif 18 <= current_hour < 23:
+            greeting = "Добрый вечер"
     else:
         greeting = "Доброй ночи"
     return json.dumps({"greeting": greeting})
 
 def get_card_summaries(transactions, start_date, end_date):
     """Получение суммарных данных по картам."""
-    filtered_transactions = transactions[
-        (transactions['Дата операции'] >= start_date) &
+    logging.info("Вызвана функция get_card_summaries")
+    try:
+        filtered_transactions = transactions[
+            (transactions['Дата операции'] >= start_date) &
+
         (transactions['Дата операции'] <= end_date)
-    ]
-    
+        ]
     card_summaries = []
-    for card in filtered_transactions['Номер карты'].unique():
+    for card in filtered_transactions['Номер карты'].dropna().unique():
         card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
         total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
-        total_cashback = card_transactions['Кешбэк'].sum()
+        total_cashback = card_transactions['Кэшбэк'].sum()
         card_summaries.append({
             "last_digits": card[-4:],
             "total_spent": round(float(total_spent), 2),
             "cashback": round(float(total_cashback), 2)
         })
     
-    return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
-
+        return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
+    except Exception as e:
+        logging.error(f"Ошибка в функции get_card_summaries: {e}")
+        return json.dumps([])\n
+\n
+\n
 def get_top_transactions(transactions, start_date, end_date):
     """Получение топ транзакций по сумме операции."""
-    filtered_transactions = transactions[
-        (transactions['Дата операции'] >= start_date) &
+    logging.info("Вызвана функция get_top_transactions")
+    try:
+        filtered_transactions = transactions[
+            (transactions['Дата операции'] >= start_date) &
+
         (transactions['Дата операции'] <= end_date) &
         (transactions['Сумма операции'] < 0)
     ].sort_values('Сумма операции', ascending=True)
@@ -87,39 +101,57 @@ def get_top_transactions(transactions, start_date, end_date):
             "category": row['Категория'],
             "description": row['Описание']
         })
-    
-    return json.dumps(sorted(top_transactions, key=lambda x: (-x["amount"], x["date"])))
 
+        return json.dumps(sorted(top_transactions, key=lambda x: (-x["amount"], x["date"])))
+    except Exception as e:
+        logging.error(f"Ошибка в функции get_top_transactions: {e}")
+        return json.dumps([])
+\n
+\n
 def get_currency_rates(currencies=None):
-    """Получение курсов валют."""
-    if currencies is None:
-        currencies = ["USD", "EUR"]
-    
-    # Фиксированные значения для тестов
-    test_rates = {
-        "USD": 0.0136,
-        "EUR": 0.0115
-    }
-    
-    rates = [{"currency": c, "rate": test_rates[c]} for c in currencies]
-    return json.dumps(rates)
+    """Получение курсов валют из user_settings.json."""
+    logging.info("Вызвана функция get_currency_rates")
+    try:
+        with open("user_settings.json", "r") as f:
+            user_settings = json.load(f)
+            currencies = user_settings.get("user_currencies", ["USD", "EUR"])
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.error(f"Ошибка при чтении user_settings.json: {e}")
+        currencies = ["USD", "EUR"]  # Default currencies
 
+        api_key = os.getenv("EXCHANGERATE_API_KEY")
+        if not api_key:\n
+            raise ValueError("API key for exchangerate.host not found in environment variables")
+        
+        base_currency = "RUB"
+        url = f"https://api.exchangerate.host/latest?base={base_currency}&symbols={','.join(currencies)}&access_key={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for bad responses
+        data = response.json()
+        
+        rates = [{"currency": currency, "rate": data["rates"].get(currency, 0)} for currency in currencies]
+        return json.dumps(rates)
+    except Exception as e:
+        logging.error(f"Ошибка в функции get_currency_rates: {e}")
+        return json.dumps([])
+\n
+\n
 def get_stock_prices(stocks=None):
     """Получение цен акций."""
-    if stocks is None:
-        stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
-    
-    # Фиксированные значения для тестов
-    test_prices = {
-        "AAPL": 150.12,
-        "AMZN": 3173.18,
-        "GOOGL": 2742.39,
-        "MSFT": 296.71,
-        "TSLA": 1007.08
-    }
-    
-    prices = [{"stock": s, "price": test_prices[s]} for s in stocks]
-    return json.dumps(prices)
+    logging.info("Вызвана функция get_stock_prices")
+    try:
+        if stocks is None:
+            stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+        
+        stock_data = yf.download(stocks, period="1d", progress=False)
+        if stock_data.empty:\n
+            raise ValueError("No stock data received from Yahoo Finance API")
+        
+        prices = [{"stock": stock, "price": round(stock_data["Close"][stock].iloc[-1], 2)} for stock in stocks]
+        return json.dumps(prices)
+    except Exception as e:
+        logging.error(f"Ошибка в функции get_stock_prices: {e}")
+        return json.dumps([])
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""

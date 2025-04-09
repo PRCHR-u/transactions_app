@@ -23,7 +23,32 @@ def spending_by_category(df, category, date=None):
     return {"category": category, "total": float(category_spending)}
 
 
-def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:
+def report_to_file(filename='report.json'):
+    """
+    Декоратор для сохранения отчета в JSON файл.
+    Может использоваться как с аргументом (имя файла), так и без.
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # Получаем DataFrame из функции
+            df = func(*args, **kwargs)
+            
+            # Сохраняем DataFrame в JSON файл
+            try:
+                df_dict = df.to_dict(orient='index')
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(df_dict, f, ensure_ascii=False, indent=4)
+                logger.info(f"Отчет сохранен в файл: {filename}")
+            except Exception as e:
+                logger.error(f"Ошибка при сохранении отчета в файл: {e}")
+            
+            return df
+        return wrapper
+    return decorator if isinstance(filename, str) else decorator(filename)
+
+
+@report_to_file()
+def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
     """Расчет средних трат по дням недели за последние 3 месяца.
     
     Args:
@@ -53,7 +78,7 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     
     if transactions.empty:
         logger.warning("Получен пустой DataFrame с транзакциями")
-        return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
+        return result    
     
     # Преобразуем даты в datetime если они еще не в этом формате
     transactions = transactions.copy()
@@ -91,8 +116,8 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     result['count'] = result['count'].astype(int)
     
     logger.info("Расчет трат по дням недели завершен успешно")
-    # Преобразуем DataFrame в словарь и затем в JSON
-    return json.dumps(result.to_dict(orient='index'), ensure_ascii=False)
+
+    return result
 
 
 def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:

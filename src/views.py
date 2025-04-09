@@ -36,13 +36,11 @@ def home_view(timestamp, transactions_data=None):
     greeting = json.loads(get_greeting(current_time))
     
     # Получаем данные о картах и транзакциях
-    cards = json.loads(get_card_summaries(transactions, start_date, end_date))
-    top_transactions = json.loads(get_top_transactions(transactions, start_date, end_date))
-    currency_rates = json.loads(get_currency_rates())
+    cards = json.loads(get_card_summaries(transactions, start_date, end_date)) if transactions is not None else []
+    top_transactions = json.loads(get_top_transactions(transactions, start_date, end_date)) if transactions is not None else []
+    currency_rates = json.loads(get_currency_rates()) 
     stock_prices = json.loads(get_stock_prices())
-    
-    # Возвращаем словарь вместо JSON-строки
-    return {
+    return json.dumps({
         "greeting": greeting["greeting"],
         "date_range": date_range,
         "cards": cards,
@@ -50,7 +48,7 @@ def home_view(timestamp, transactions_data=None):
         "currency_rates": currency_rates,
         "stock_prices": stock_prices
     }
-
+)
 def events_view(timestamp, transactions_data=None):
     current_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") if isinstance(timestamp, str) else timestamp
     
