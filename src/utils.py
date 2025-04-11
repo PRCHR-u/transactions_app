@@ -41,7 +41,7 @@ def get_date_range(input_date):
     })
 
 
-def get_greeting():
+def get_greeting(self):
     """Получение приветствия в зависимости от часа."""
     logging.info("Вызвана функция get_greeting")
     try:
@@ -52,8 +52,11 @@ def get_greeting():
             greeting = "Добрый день"
         elif 18 <= current_hour < 23:
             greeting = "Добрый вечер"
-    else:
-        greeting = "Доброй ночи"
+        else:
+            greeting = "Доброй ночи"
+    except Exception as e:
+        logging.error(f"Ошибка в функции get_greeting: {e}")
+        greeting = "Ошибка получения приветствия"
     return json.dumps({"greeting": greeting})
 
 def get_card_summaries(transactions, start_date, end_date):
@@ -62,52 +65,48 @@ def get_card_summaries(transactions, start_date, end_date):
     try:
         filtered_transactions = transactions[
             (transactions['Дата операции'] >= start_date) &
-
-        (transactions['Дата операции'] <= end_date)
+            (transactions['Дата операции'] <= end_date)
         ]
-    card_summaries = []
-    for card in filtered_transactions['Номер карты'].dropna().unique():
-        card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
-        total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
-        total_cashback = card_transactions['Кэшбэк'].sum()
-        card_summaries.append({
-            "last_digits": card[-4:],
-            "total_spent": round(float(total_spent), 2),
-            "cashback": round(float(total_cashback), 2)
-        })
-    
+        card_summaries = []
+        for card in filtered_transactions['Номер карты'].dropna().unique():
+            card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
+            total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
+            total_cashback = card_transactions['Кэшбэк'].sum()
+            card_summaries.append({
+                "last_digits": card[-4:],
+                "total_spent": round(float(total_spent), 2),
+                "cashback": round(float(total_cashback), 2)
+            })
+        
         return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
     except Exception as e:
         logging.error(f"Ошибка в функции get_card_summaries: {e}")
-        return json.dumps([])\n
-\n
-\n
+        return json.dumps([])
+
 def get_top_transactions(transactions, start_date, end_date):
     """Получение топ транзакций по сумме операции."""
     logging.info("Вызвана функция get_top_transactions")
     try:
         filtered_transactions = transactions[
             (transactions['Дата операции'] >= start_date) &
-
-        (transactions['Дата операции'] <= end_date) &
-        (transactions['Сумма операции'] < 0)
-    ].sort_values('Сумма операции', ascending=True)
-    
-    top_transactions = []
-    for _, row in filtered_transactions.iterrows():
-        top_transactions.append({
-            "date": row['Дата операции'].strftime('%d.%m.%Y'),
-            "amount": round(float(abs(row['Сумма операции'])), 2),
-            "category": row['Категория'],
-            "description": row['Описание']
-        })
+            (transactions['Дата операции'] <= end_date) &
+            (transactions['Сумма операции'] < 0)
+        ].sort_values('Сумма операции', ascending=True)
+        
+        top_transactions = []
+        for _, row in filtered_transactions.iterrows():
+            top_transactions.append({
+                "date": row['Дата операции'].strftime('%d.%m.%Y'),
+                "amount": round(float(abs(row['Сумма операции'])), 2),
+                "category": row['Категория'],
+                "description": row['Описание']
+            })
 
         return json.dumps(sorted(top_transactions, key=lambda x: (-x["amount"], x["date"])))
     except Exception as e:
         logging.error(f"Ошибка в функции get_top_transactions: {e}")
         return json.dumps([])
-\n
-\n
+
 def get_currency_rates(currencies=None):
     """Получение курсов валют из user_settings.json."""
     logging.info("Вызвана функция get_currency_rates")
@@ -119,23 +118,19 @@ def get_currency_rates(currencies=None):
         logging.error(f"Ошибка при чтении user_settings.json: {e}")
         currencies = ["USD", "EUR"]  # Default currencies
 
-        api_key = os.getenv("EXCHANGERATE_API_KEY")
-        if not api_key:\n
-            raise ValueError("API key for exchangerate.host not found in environment variables")
-        
-        base_currency = "RUB"
-        url = f"https://api.exchangerate.host/latest?base={base_currency}&symbols={','.join(currencies)}&access_key={api_key}"
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for bad responses
-        data = response.json()
-        
-        rates = [{"currency": currency, "rate": data["rates"].get(currency, 0)} for currency in currencies]
-        return json.dumps(rates)
-    except Exception as e:
-        logging.error(f"Ошибка в функции get_currency_rates: {e}")
-        return json.dumps([])
-\n
-\n
+    api_key = os.getenv("EXCHANGERATE_API_KEY")
+    if not api_key:
+        raise ValueError("API key for exchangerate.host not found in environment variables")
+    
+    base_currency = "RUB"
+    url = os.getenv("STOCK_API_URL")  # Используем URL из .env
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an exception for bad responses
+    data = response.json()
+    
+    rates = [{"currency": currency, "rate": data["rates"].get(currency, 0)} for currency in currencies]
+    return json.dumps(rates)
+
 def get_stock_prices(stocks=None):
     """Получение цен акций."""
     logging.info("Вызвана функция get_stock_prices")
@@ -144,7 +139,7 @@ def get_stock_prices(stocks=None):
             stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
         
         stock_data = yf.download(stocks, period="1d", progress=False)
-        if stock_data.empty:\n
+        if stock_data.empty:
             raise ValueError("No stock data received from Yahoo Finance API")
         
         prices = [{"stock": stock, "price": round(stock_data["Close"][stock].iloc[-1], 2)} for stock in stocks]
