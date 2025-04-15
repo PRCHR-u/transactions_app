@@ -190,7 +190,7 @@ def test_search_phone_numbers(sample_transactions):
             "Описание": "МТС Mobile +7 981 333-44-55"
         }
     ]
-    
+
     result = search_phone_numbers(transactions)
     expected = [
         {
@@ -243,7 +243,7 @@ def test_search_physical_transfers(sample_transactions):
             "Описание": "Иван Петров"
         }
     ]
-    
+
     result = search_physical_transfers(transactions)
     expected = [
         {

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -12,7 +12,6 @@ from src.utils import (
     get_greeting,
     get_stock_prices,
     get_top_transactions,
-    read_transactions,
 )
 
 
@@ -26,11 +25,13 @@ def test_get_greeting(hour, expected):
     result = json.loads(get_greeting(hour))
     assert result["greeting"] == expected
 
+
 def test_get_date_range():
     input_date = "2023-10-15 14:30:00"
     result = json.loads(get_date_range(input_date))
     assert result["start_date"] == "2023-10-01 00:00:00"
     assert result["end_date"] == "2023-10-15 14:30:00"
+
 
 @pytest.mark.parametrize("transactions_data,expected", [
     (
@@ -81,6 +82,7 @@ def test_get_card_summaries(transactions_data, expected):
     result = json.loads(get_card_summaries(df, start_date, end_date))
     assert result == expected
 
+
 @pytest.mark.parametrize("transactions_data,expected", [
     (
         [
@@ -98,8 +100,16 @@ def test_get_card_summaries(transactions_data, expected):
             }
         ],
         [
-            {"date": "01.10.2023", "amount": 1262.00, "category": "Супермаркеты", "description": "Лента"},
-            {"date": "15.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод"}
+            {
+                "date": "01.10.2023", "amount": 1262.00,
+                "category": "Супермаркеты",
+                "description": "Лента"
+            },
+            {
+                "date": "15.10.2023", "amount": 1198.23,
+                "category": "Переводы",
+                "description": "Перевод"
+            }
         ]
     ),
     (
@@ -112,7 +122,10 @@ def test_get_card_summaries(transactions_data, expected):
             }
         ],
         [
-            {"date": "01.10.2023", "amount": 100.00, "category": "Супермаркеты", "description": "Магазин"}
+            {
+                "date": "01.10.2023", "amount": 100.00,
+                "category": "Супермаркеты", "description": "Магазин"
+            }
         ]
     )
 ])
@@ -123,6 +136,7 @@ def test_get_top_transactions(transactions_data, expected):
     end_date = datetime(2023, 10, 31)
     result = json.loads(get_top_transactions(df, start_date, end_date))
     assert result == expected
+
 
 @patch('src.utils.get_currency_rates')
 def test_get_currency_rates(mock_get_rates):
@@ -135,6 +149,7 @@ def test_get_currency_rates(mock_get_rates):
         {"currency": "USD", "rate": 0.0136},
         {"currency": "EUR", "rate": 0.0115}
     ]
+
 
 @patch('src.utils.get_stock_prices')
 def test_get_stock_prices(mock_get_prices):

@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 import pytest
 
@@ -7,7 +5,9 @@ from src.reports import spending_by_category, spending_by_weekday, spending_by_w
 
 
 @pytest.fixture
-def sample_transactions():
+def sample_transactions() -> pd.DataFrame:
+    """Фикстура с примером данных о транзакциях."""
+
     data = [
         {
             "Дата операции": "2023-10-01",
@@ -15,84 +15,96 @@ def sample_transactions():
             "Кешбэк": 12.62,
             "Категория": "Супермаркеты",
             "Описание": "Лента"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-10-10",
             "Сумма операции": -7.94,
             "Кешбэк": 0.08,
             "Категория": "Супермаркеты",
             "Описание": "Магнит"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-10-15",
             "Сумма операции": -1198.23,
             "Кешбэк": 11.98,
             "Категория": "Переводы",
             "Описание": "Перевод Кредитная карта. ТП 10.2 RUR"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-10-20",
             "Сумма операции": -829.00,
             "Кешбэк": 8.29,
             "Категория": "Супермаркеты",
             "Описание": "Лента"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-10-25",
             "Сумма операции": -421.00,
             "Кешбэк": 4.21,
             "Категория": "Различные товары",
             "Описание": "Ozon.ru"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-09-15",
             "Сумма операции": 14216.42,
             "Кешбэк": 0.00,
             "Категория": "Пополнение_BANK007",
             "Описание": "Пополнение счета"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-09-20",
             "Сумма операции": -453.00,
             "Кешбэк": 4.53,
             "Категория": "Бонусы",
             "Описание": "Кешбэк за обычные покупки"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-09-25",
             "Сумма операции": 33000.00,
             "Кешбэк": 0.00,
             "Категория": "Пополнение_BANK007",
             "Описание": "Пополнение счета"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-08-15",
             "Сумма операции": 1242.00,
             "Кешбэк": 12.42,
             "Категория": "Проценты_на_остаток",
             "Описание": "Проценты по остатку"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-08-20",
             "Сумма операции": 29.00,
             "Кешбэк": 0.29,
             "Категория": "Кэшбэк",
             "Описание": "Кешбэк за обычные покупки"
-        },
+        },  # type: ignore
         {
             "Дата операции": "2023-08-25",
             "Сумма операции": 1000.00,
             "Кешбэк": 10.00,
             "Категория": "Переводы",
             "Описание": "Валерий А."
-        }
+        }  # type: ignore
     ]
     df = pd.DataFrame(data)
     df['Дата операции'] = pd.to_datetime(df['Дата операции'])
     return df
 
-@pytest.mark.parametrize("category,date,expected", [
-    ("Супермаркеты", "2023-10-15", {"category": "Супермаркеты", "total": 1269.94}),
+
+@pytest.mark.parametrize(
+    "category,date,expected",
+    [
+        (
+            "Супермаркеты",
+            "2023-10-15",
+            {"category": "Супермаркеты", "total": 1269.94},
+        ),
+        (
+            "Переводы",
+            "2023-10-15",
+            {"category": "Переводы", "total": 1198.23},
+        ),
     ("Переводы", "2023-10-15", {"category": "Переводы", "total": 1198.23}),
     ("Различные товары", "2023-10-15", {"category": "Различные товары", "total": 0.0}),
     ("Пополнение_BANK007", "2023-10-15", {"category": "Пополнение_BANK007", "total": 0.0}),
@@ -101,43 +113,85 @@ def test_spending_by_category(sample_transactions, category, date, expected):
     result = spending_by_category(sample_transactions, category, date=date)
     assert result == expected
 
-@pytest.mark.parametrize("date,expected", [
-    ("2023-10-15", pd.DataFrame({
-        'mean': [0.0, 7.94, 453.0, 0.0, 0.0, 0.0, 2460.23],
-        'count': [0, 1, 1, 0, 0, 0, 1]
-    }, index=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])),
-    ("2023-09-15", pd.DataFrame({
-        'mean': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        'count': [0, 0, 0, 0, 0, 0, 0]
-    }, index=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']))
-])
+
+@pytest.mark.parametrize(
+    "date,expected",
+    [
+        (
+            "2023-10-15",
+            pd.DataFrame(
+                {
+                    'mean': [0.0, 7.94, 453.0, 0.0, 0.0, 0.0, 2460.23],
+                    'count': [0, 1, 1, 0, 0, 0, 1]
+                },
+                index=[
+                    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                    'Saturday', 'Sunday'
+                ]
+            )
+        ),
+        (
+            "2023-09-15",
+            pd.DataFrame(
+                {
+                    'mean': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    'count': [0, 0, 0, 0, 0, 0, 0]
+                },
+                index=[
+                    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                    'Saturday', 'Sunday'
+                ]
+            )
+        )
+    ]
+)
 def test_spending_by_weekday(sample_transactions, date, expected):
     result = spending_by_weekday(sample_transactions, date=date)
     pd.testing.assert_frame_equal(result, expected)
 
-@pytest.mark.parametrize("date,expected", [
-    ("2023-10-15", {
-        "Рабочий день": {"mean": 460.94},
-        "Выходной день": {"mean": 2460.23}
-    }),
-    ("2023-09-15", {
-        "Рабочий день": {"mean": 0.0},
-        "Выходной день": {"mean": 0.0}
-    })
-])
+
+@pytest.mark.parametrize(
+    "date,expected",
+    [
+        (
+            "2023-10-15",
+            {
+                "Рабочий день": {"mean": 460.94},
+                "Выходной день": {"mean": 2460.23}
+            }
+        ),
+        (
+            "2023-09-15",
+            {
+                "Рабочий день": {"mean": 0.0},
+                "Выходной день": {"mean": 0.0}
+            }
+        )
+    ]
+)
 def test_spending_by_workday(sample_transactions, date, expected):
     result = spending_by_workday(sample_transactions, date=date)
-    assert json.loads(result) == expected
+    assert result == expected
 
-@pytest.mark.parametrize("category,expected", [
-    ("Супермаркеты", {"category": "Супермаркеты", "total": 2098.94}),
-    ("Переводы", {"category": "Переводы", "total": 1198.23}),
-    ("Различные товары", {"category": "Различные товары", "total": 421.00}),
-    ("Пополнение_BANK007", {"category": "Пополнение_BANK007", "total": 0.0}),
-])
-def test_spending_by_category_with_cashback(sample_transactions, category, expected):
+
+@pytest.mark.parametrize(
+    "category,expected",
+    [
+        ("Супермаркеты", {"category": "Супермаркеты", "total": 2098.94}),
+        ("Переводы", {"category": "Переводы", "total": 1198.23}),
+        ("Различные товары", {"category": "Различные товары", "total": 421.00}),
+        (
+            "Пополнение_BANK007",
+            {"category": "Пополнение_BANK007", "total": 0.0}
+        ),
+    ]
+)
+def test_spending_by_category_with_cashback(
+    sample_transactions, category, expected
+):
     result = spending_by_category(sample_transactions, category)
     assert result == expected
+
 
 @pytest.mark.parametrize("date_format", [
     "2023-10-15",
@@ -146,64 +200,120 @@ def test_spending_by_category_with_cashback(sample_transactions, category, expec
     "2023-10-15 00:00:00",
     "2023-10-15 00:00:00+00:00"
 ])
-def test_spending_by_category_different_date_formats(sample_transactions, date_format):
-    result = spending_by_category(sample_transactions, "Супермаркеты", date=date_format)
+def test_spending_by_category_different_date_formats(
+        sample_transactions, date_format
+):
+    result = spending_by_category(sample_transactions,
+                                  "Супермаркеты",
+                                  date=date_format)
     assert result["total"] >= 0
 
-@pytest.mark.parametrize("amount,expected", [
-    (0.00, 2098.94),
-    (100.00, 2098.94),
-    (-100.00, 2198.94)
-])
-def test_spending_by_category_zero_amount(sample_transactions, amount, expected):
+
+@pytest.mark.parametrize("amount,expected",
+                         [(0.00, 2098.94), (100.00, 2098.94), (-100.00, 2198.94)])
+def test_spending_by_category_zero_amount(
+        sample_transactions, amount, expected
+):
     zero_transaction = pd.DataFrame([{
-        "Дата операции": "2023-10-30",
-        "Сумма операции": amount,
-        "Кешбэк": 0.00,
-        "Категория": "Супермаркеты",
-        "Описание": "Тестовая транзакция"
+        "Дата операции":
+            "2023-10-30",
+        "Сумма операции":
+            amount,
+        "Кешбэк":
+            0.00,
+        "Категория":
+            "Супермаркеты",
+        "Описание":
+            "Тестовая транзакция"
     }])
-    zero_transaction['Дата операции'] = pd.to_datetime(zero_transaction['Дата операции'])
-    
-    test_df = pd.concat([sample_transactions, zero_transaction], ignore_index=True)
+
+
+
+
+
+
+
+
+
+
+
+
+    zero_transaction['Дата операции'] = pd.to_datetime(
+        zero_transaction['Дата операции']
+    )
+
+    test_df = pd.concat(
+        [sample_transactions, zero_transaction], ignore_index=True
+    )
     result = spending_by_category(test_df, "Супермаркеты")
     assert result["total"] == expected
 
-@pytest.mark.parametrize("cashback,expected", [
-    (0.00, 100.00),
-    (1.00, 100.00),
-    (-1.00, 100.00),
-    (pd.NA, 100.00)
-])
+
+@pytest.mark.parametrize("cashback,expected", [(0.00, 100.00), (1.00, 100.00),
+                                               (-1.00, 100.00), (pd.NA, 100.00)])
 def test_spending_by_category_cashback_variations(cashback, expected):
     transactions = pd.DataFrame([{
-        "Дата операции": "2023-10-01",
-        "Сумма операции": -100.00,
-        "Кешбэк": cashback,
-        "Категория": "Тестовая категория",
-        "Описание": "Тестовая транзакция"
+        "Дата операции":
+            "2023-10-01",
+        "Сумма операции":
+            -100.00,
+        "Кешбэк":
+            cashback,
+        "Категория":
+            "Тестовая категория",
+        "Описание":
+            "Тестовая транзакция"
     }])
-    transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
-    
+    transactions['Дата операции'] = pd.to_datetime(
+        transactions['Дата операции']
+    )
+
     result = spending_by_category(transactions, "Тестовая категория")
     assert result["total"] == expected
 
-@pytest.mark.parametrize("amount,expected", [
-    (-1.23e2, 123.00),
-    (-123.45, 123.45),
-    (-1.23e-2, 0.0123),
-    (-1.23e3, 1230.00)
-])
-def test_spending_by_category_different_number_formats(amount, expected):
-    transactions = pd.DataFrame([{
-        "Дата операции": "2023-10-01",
-        "Сумма операции": amount,
-        "Кешбэк": 0.00,
-        "Категория": "Тестовая категория",
-        "Описание": "Тестовая транзакция"
-    }])
-    transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@pytest.mark.parametrize(
+    "amount,expected",
+    [
+        (-1.23e2, 123.00),
+        (-123.45, 123.45),
+        (-1.23e-2, 0.0123),
+        (-1.23e3, 1230.00)
+    ]
+)
+def test_spending_by_category_different_number_formats(
+    amount, expected
+):
+    transactions = pd.DataFrame(
+        [
+            {
+                "Дата операции": "2023-10-01",
+                "Сумма операции": amount,
+                "Кешбэк": 0.00,
+                "Категория": "Тестовая категория",
+                "Описание": "Тестовая транзакция"
+            }
+        ]
+    )
+    transactions['Дата операции'] = pd.to_datetime(
+        transactions['Дата операции']
+    )
+
     result = spending_by_category(transactions, "Тестовая категория")
     assert result["total"] == expected
 
@@ -248,7 +358,9 @@ def test_spending_by_weekday(sample_transactions):
     result = spending_by_weekday(sample_transactions, date="2023-10-15")
     result_dict = json.loads(result)
     assert isinstance(result_dict, dict)
-    assert all(day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    assert all(
+        day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    )
     assert all(isinstance(result_dict[day]['mean'], float) for day in result_dict)
     assert all(isinstance(result_dict[day]['count'], int) for day in result_dict)
     assert all(result_dict[day]['mean'] >= 0 for day in result_dict)
@@ -260,7 +372,9 @@ def test_spending_by_weekday_empty_df():
     result = spending_by_weekday(empty_df)
     result_dict = json.loads(result)
     assert isinstance(result_dict, dict)
-    assert all(day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    assert all(
+        day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    )
     assert all(result_dict[day]['mean'] == 0.0 for day in result_dict)
     assert all(result_dict[day]['count'] == 0 for day in result_dict)
 
@@ -276,7 +390,9 @@ def test_spending_by_weekday_with_income(sample_transactions):
     result = spending_by_weekday(df, date="2023-10-15")
     result_dict = json.loads(result)
     assert isinstance(result_dict, dict)
-    assert all(day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    assert all(
+        day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    )
     assert all(isinstance(result_dict[day]['mean'], float) for day in result_dict)
     assert all(isinstance(result_dict[day]['count'], int) for day in result_dict)
     assert all(result_dict[day]['mean'] >= 0 for day in result_dict)
@@ -293,6 +409,7 @@ def test_spending_by_workday_empty_df():
     assert json.loads(result) == expected
 
 def test_spending_by_workday_with_income(sample_transactions):
+
     """Тест расчета трат по рабочим/выходным дням с учетом доходов."""
     # Добавляем доход
     income = pd.DataFrame({
@@ -337,6 +454,7 @@ def test_spending_by_category_past_date(sample_transactions):
     result = spending_by_category(sample_transactions, "Супермаркеты", date="2023-01-01")
     assert result == {"category": "Супермаркеты", "total": 0.0}
 
+
 def test_spending_by_category_multiple_categories(sample_transactions):
     """Тест на несколько категорий"""
     categories = ["Супермаркеты", "Переводы", "Различные товары"]
@@ -344,6 +462,7 @@ def test_spending_by_category_multiple_categories(sample_transactions):
         result = spending_by_category(sample_transactions, category)
         assert result["category"] == category
         assert result["total"] >= 0
+
 
 def test_spending_by_category_with_nan_values():
     """Тест на обработку пропущенных значений (NaN)"""
@@ -368,6 +487,7 @@ def test_spending_by_category_with_nan_values():
     result = spending_by_category(nan_transactions, "Тестовая категория")
     assert result["total"] == 100.00  # Должны учитываться только валидные значения
 
+
 def test_spending_by_category_negative_cashback():
     """Тест на отрицательные значения кешбэка"""
     negative_cashback_transactions = pd.DataFrame([
@@ -383,6 +503,7 @@ def test_spending_by_category_negative_cashback():
     
     result = spending_by_category(negative_cashback_transactions, "Тестовая категория")
     assert result["total"] == 100.00  # Отрицательный кешбэк не должен влиять на сумму
+
 
 def test_spending_by_category_timezone_handling():
     """Тест на обработку разных часовых поясов"""
@@ -407,6 +528,7 @@ def test_spending_by_category_timezone_handling():
     result = spending_by_category(timezone_transactions, "Тестовая категория")
     assert result["total"] == 300.00  # Сумма должна быть одинаковой независимо от часового пояса
 
+
 def test_spending_by_category_empty_strings():
     """Тест на пустые строки в данных"""
     empty_strings_transactions = pd.DataFrame([
@@ -423,6 +545,7 @@ def test_spending_by_category_empty_strings():
     result = spending_by_category(empty_strings_transactions, "")
     assert result["total"] == 100.00
 
+
 def test_spending_by_category_whitespace_handling():
     """Тест на обработку пробелов в названиях категорий"""
     whitespace_transactions = pd.DataFrame([
@@ -438,6 +561,7 @@ def test_spending_by_category_whitespace_handling():
     
     result = spending_by_category(whitespace_transactions, "  Тестовая категория  ")
     assert result["total"] == 100.00
+
 
 def test_spending_by_category_duplicate_dates():
     """Тест на дубликаты дат"""
@@ -462,6 +586,7 @@ def test_spending_by_category_duplicate_dates():
     result = spending_by_category(duplicate_dates_transactions, "Тестовая категория")
     assert result["total"] == 300.00  # Должны суммироваться все транзакции за одну дату
 
+
 def test_spending_by_category_invalid_dates():
     """Тест на некорректные даты"""
     invalid_dates_transactions = pd.DataFrame([
@@ -478,6 +603,7 @@ def test_spending_by_category_invalid_dates():
         invalid_dates_transactions['Дата операции'] = pd.to_datetime(invalid_dates_transactions['Дата операции'])
         spending_by_category(invalid_dates_transactions, "Тестовая категория")
 
+
 def test_spending_by_weekday_different_date_formats(sample_transactions):
     """Тест на различные форматы дат для расходов по дням недели"""
     date_formats = ["2023-10-15", "15.10.2023", "2023/10/15"]
@@ -485,9 +611,12 @@ def test_spending_by_weekday_different_date_formats(sample_transactions):
         result = spending_by_weekday(sample_transactions, date=date)
         result_dict = json.loads(result)
         assert isinstance(result_dict, dict)
-        assert all(day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+        assert all(
+            day in result_dict for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        )
         assert all(result_dict[day]['mean'] >= 0 for day in result_dict)
         assert all(result_dict[day]['count'] >= 0 for day in result_dict)
+
 
 def test_spending_by_category_large_amounts():
     """Тест на большие суммы транзакций"""
@@ -505,6 +634,7 @@ def test_spending_by_category_large_amounts():
     result = spending_by_category(large_transactions, "Крупные покупки")
     assert result["total"] == 1000000.00
 
+
 def test_spending_by_category_small_amounts():
     """Тест на очень маленькие суммы транзакций"""
     small_transactions = pd.DataFrame([
@@ -520,6 +650,7 @@ def test_spending_by_category_small_amounts():
     
     result = spending_by_category(small_transactions, "Мелкие покупки")
     assert result["total"] == 0.01
+
 
 def test_spending_by_category_special_characters():
     """Тест на категории со специальными символами"""
@@ -537,6 +668,7 @@ def test_spending_by_category_special_characters():
     result = spending_by_category(special_transactions, "Тест@#$%^&*()")
     assert result["total"] == 100.00
 
+
 def test_spending_by_category_unicode_characters():
     """Тест на категории с Unicode символами"""
     unicode_transactions = pd.DataFrame([
@@ -552,6 +684,7 @@ def test_spending_by_category_unicode_characters():
     
     result = spending_by_category(unicode_transactions, "Тест🌍🌎🌏")
     assert result["total"] == 100.00
+
 
 def test_spending_by_category_case_sensitivity():
     """Тест на чувствительность к регистру в названиях категорий"""
@@ -575,6 +708,7 @@ def test_spending_by_category_case_sensitivity():
     assert result2["total"] == 0.0  # Должно быть 0, так как регистр важен
     assert result3["total"] == 0.0  # Должно быть 0, так как регистр важен
 
+
 def test_spending_by_category_with_none_values():
     """Тест на обработку None значений в данных"""
     none_transactions = pd.DataFrame([
@@ -590,6 +724,7 @@ def test_spending_by_category_with_none_values():
     
     result = spending_by_category(none_transactions, "Тестовая категория")
     assert result["total"] == 100.00
+
 
 def test_spending_by_category_with_inf_values():
     """Тест на обработку бесконечных значений"""
@@ -607,6 +742,7 @@ def test_spending_by_category_with_inf_values():
     result = spending_by_category(inf_transactions, "Тестовая категория")
     assert result["total"] == 0.0  # Бесконечные значения должны игнорироваться
 
+
 def test_spending_by_category_with_nan_category():
     """Тест на категории с NaN значениями"""
     nan_category_transactions = pd.DataFrame([
@@ -622,6 +758,7 @@ def test_spending_by_category_with_nan_category():
     
     result = spending_by_category(nan_category_transactions, pd.NA)
     assert result["total"] == 0.0  # NaN категории должны возвращать 0
+
 
 def test_spending_by_category_with_very_large_numbers():
     """Тест на очень большие числа"""
@@ -639,6 +776,7 @@ def test_spending_by_category_with_very_large_numbers():
     result = spending_by_category(large_number_transactions, "Тестовая категория")
     assert result["total"] == 1e15
 
+
 def test_spending_by_category_with_very_small_numbers():
     """Тест на очень маленькие числа"""
     small_number_transactions = pd.DataFrame([
@@ -654,6 +792,7 @@ def test_spending_by_category_with_very_small_numbers():
     
     result = spending_by_category(small_number_transactions, "Тестовая категория")
     assert result["total"] == 1e-15
+
 
 def test_spending_by_category_with_mixed_date_formats():
     """Тест на смешанные форматы дат"""
@@ -677,6 +816,7 @@ def test_spending_by_category_with_mixed_date_formats():
     
     result = spending_by_category(mixed_dates_transactions, "Тестовая категория")
     assert result["total"] == 300.00
+
 
 def test_spending_by_category_with_duplicate_categories():
     """Тест на дубликаты категорий"""
@@ -742,7 +882,7 @@ def test_spending_by_category_with_mixed_amount_types():
             "Описание": "Тестовая транзакция"
         }
     ])
-    mixed_amount_transactions['Дата операции'] = pd.to_datetime(mixed_amount_transactions['Дата операции'])
-    
+    mixed_amount_transactions['Дата операции'] = pd.to_datetime(
+        mixed_amount_transactions['Дата операции'])
     result = spending_by_category(mixed_amount_transactions, "Тестовая категория")
     assert result["total"] == 300.00
