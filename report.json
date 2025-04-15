@@ -1,0 +1,30 @@
+{
+    "Monday": {
+        "mean": 0.0,
+        "count": 0
+    },
+    "Tuesday": {
+        "mean": 7.94,
+        "count": 1
+    },
+    "Wednesday": {
+        "mean": 453.0,
+        "count": 1
+    },
+    "Thursday": {
+        "mean": 0.0,
+        "count": 0
+    },
+    "Friday": {
+        "mean": 0.0,
+        "count": 0
+    },
+    "Saturday": {
+        "mean": 0.0,
+        "count": 0
+    },
+    "Sunday": {
+        "mean": 2460.23,
+        "count": 2
+    }
+}
