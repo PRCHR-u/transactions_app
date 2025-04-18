@@ -1,6 +1,6 @@
 import json
-import re
 import logging
+import re
 
 import numpy as np
 import pandas as pd
@@ -9,8 +9,11 @@ import pandas as pd
 def profitable_categories(
     df, year, month):
     """Расчет расходов по категориям за указанный месяц."""
-    df["Дата операции"] = pd.to_datetime(df["Дата операции"])
-    mask = (df["Дата операции"].dt.year == year) & (df["Дата операции"].dt.month == month)  # noqa: E501
+    df["Дата операции"] = pd.to_datetime(
+        df["Дата операции"])
+    mask = (
+        (df["Дата операции"].dt.year == year) & (df["Дата операции"].dt.month == month)
+    )
     filtered_df = df[mask].copy()
     filtered_df = filtered_df[filtered_df["Сумма операции"] < 0]  # Только расходы
     filtered_df["Сумма операции"] = filtered_df["Сумма операции"].abs()
@@ -65,13 +68,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 
 def search_phone_numbers(transactions):
-    logging.info("Вызвана функция search_phone_numbers")
+    logging.info("Вызвана функция search_phone_numbers")  # type: ignore
     try:
         phone_pattern = r"\+7\s+\d{3}\s+\d{2,3}[-\s]\d{2}[-\s]\d{2}"  # noqa: E501
         matches = [
             t for t in transactions if re.search(phone_pattern, t["Описание"])
         ]
-        return json.dumps(matches, ensure_ascii=False)
+        return json.dumps(matches, ensure_ascii=False)  # type: ignore
     except Exception as e:
         logging.error(f"Ошибка в функции search_phone_numbers: {e}")
         return json.dumps([], ensure_ascii=False)

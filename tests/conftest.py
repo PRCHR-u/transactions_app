@@ -46,7 +46,11 @@ def sample_transactions():
             29.00,
             1000.00,
         ],
-        "Кешбэк": [12.62, 0.08, 11.98, 8.29, 4.21, 0.00, 4.53, 0.00, 12.42, 0.29, 10.00],
+        "Кешбэк": [
+            12.62, 0.08, 11.98, 8.29,
+            4.21, 0.00, 4.53, 0.00,
+            12.42, 0.29, 10.00
+            ],
         "Категория": [
             "Супермаркеты",
             "Супермаркеты",
@@ -82,13 +86,16 @@ def sample_transactions():
 @pytest.fixture
 def sample_user_settings():
     return {
-        "user_currencies": ["USD", "EUR"], "user_stocks": ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+        "user_currencies": ["USD", "EUR"],
+        "user_stocks": ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"],
     }
 
 
 @pytest.fixture
 def mock_currency_rates_response(monkeypatch):
-    mock_response = {"rates": {"USD": 73.21, "EUR": 87.08, "RUB": 1.0}}
+    mock_response = {
+        "rates": {"USD": 73.21, "EUR": 87.08, "RUB": 1.0}
+    }
     mock = MagicMock()
     mock.status_code = 200
     mock.json.return_value = mock_response

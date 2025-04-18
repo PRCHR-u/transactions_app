@@ -59,13 +59,13 @@ def test_get_date_range():
             ],
             [
                 {
-                    "last_digits": "3456", 
-                    "total_spent": 1262.00, 
+                    "last_digits": "3456",
+                    "total_spent": 1262.00,
                     "cashback": 12.62
                     },
                 {
                     "last_digits": "4321",
-                    "total_spent": 1198.23, 
+                    "total_spent": 1198.23,
                     "cashback": 11.98
                     },
             ],
@@ -113,8 +113,18 @@ def test_get_card_summaries(transactions_data, expected):
                 },
             ],
             [
-                {"date": "01.10.2023", "amount": 1262.00, "category": "Супермаркеты", "description": "Лента"},
-                {"date": "15.10.2023", "amount": 1198.23, "category": "Переводы", "description": "Перевод"},
+                {
+                    "date": "01.10.2023",
+                    "amount": 1262.00,
+                    "category": "Супермаркеты",
+                    "description": "Лента"
+                },
+                {
+                    "date": "15.10.2023",
+                    "amount": 1198.23,
+                    "category": "Переводы",
+                    "description": "Перевод"
+                },
             ],
         ),
         (
@@ -126,7 +136,14 @@ def test_get_card_summaries(transactions_data, expected):
                     "Описание": "Магазин",
                 }
             ],
-            [{"date": "01.10.2023", "amount": 100.00, "category": "Супермаркеты", "description": "Магазин"}],
+            [
+                {
+                    "date": "01.10.2023",
+                    "amount": 100.00,
+                    "category": "Супермаркеты",
+                    "description": "Магазин"
+                }
+            ],
         ),
     ],
 )

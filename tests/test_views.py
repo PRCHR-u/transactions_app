@@ -54,7 +54,6 @@ from src.views import events_view, home_view  # Ensure this line exists
                 {"currency": "USD", "rate": 0.0136},
                 {"currency": "EUR", "rate": 0.0115}
             ],
-            
             "stock_prices": [  # Current stock prices
                 {"stock": "AAPL", "price": 150.12},
                 {"stock": "AMZN", "price": 3173.18},
@@ -72,8 +71,8 @@ from src.views import events_view, home_view  # Ensure this line exists
                 "Сумма операции": -100.00,
                 "Кешбэк": 1.00,
                 "Категория": "Супермаркеты",
-                "Описание": "Магазин"
-            }
+                "Описание": "Магазин",
+            },
 
         ],
         {
@@ -96,9 +95,9 @@ from src.views import events_view, home_view  # Ensure this line exists
                 {"currency": "USD", "rate": 0.0136},
                 {"currency": "EUR", "rate": 0.0115}
             ],
-
             "stock_prices": [  # Current stock prices
-                {"stock": "AAPL", "price": 150.12}, {"stock": "AMZN", "price": 3173.18},
+                {"stock": "AAPL", "price": 150.12},
+                {"stock": "AMZN", "price": 3173.18},
                 {"stock": "GOOGL", "price": 2742.39},
                 {"stock": "MSFT", "price": 296.71},
                 {"stock": "TSLA", "price": 1007.08}
@@ -107,8 +106,10 @@ from src.views import events_view, home_view  # Ensure this line exists
     )
 ])
 
-def test_home_view(transactions_data, expected, monkeypatch,
-                  mock_currency_rates_response, mock_stock_prices_response):
+def test_home_view(
+    transactions_data, expected, monkeypatch,
+    mock_currency_rates_response, mock_stock_prices_response
+    ):
     def mock_read_transactions(file_path):
         return pd.DataFrame(transactions_data)
 
@@ -139,7 +140,6 @@ def test_home_view(transactions_data, expected, monkeypatch,
                 "Категория": "Переводы",
                 "Описание": "Перевод"
             }
-
         ],
         {
             "expenses": {  # Corrected indentation here
@@ -152,12 +152,10 @@ def test_home_view(transactions_data, expected, monkeypatch,
                 "transfers_and_cash": [  # Corrected closing brace here
                     {"category": "Переводы", "amount": 1198.23},
                     {"category": "Остальное", "amount": 0}
-                ]},\
-             "income": {
-                 "total_amount": 0,
-                "main": [
-                    {"category": "Остальное", "amount": 0}
-                ]
+                ]},
+            "income": {
+                "total_amount": 0,
+                "main": [{"category": "Остальное", "amount": 0}]
                 },
             "currency_rates": [  # Current currency exchange rates
                 {"currency": "USD", "rate": 0.0136},
@@ -167,52 +165,53 @@ def test_home_view(transactions_data, expected, monkeypatch,
             "stock_prices": [  # Current stock prices
                 {"stock": "AAPL", "price": 150.12},
                 {"stock": "AMZN", "price": 3173.18},
-                {"stock": "GOOGL", "price": 2742.39}, {"stock": "MSFT", "price": 296.71},
-                {"stock": "TSLA", "price": 1007.08}
-            ]
-        }
+                {"stock": "GOOGL", "price": 2742.39},
+                {"stock": "MSFT", "price": 296.71},
+                {"stock": "TSLA", "price": 1007.08}]}
     ),
 
     (  # Test case 2
 
-
-
-        [{"Дата операции": "2023-10-01",
+        [
+            {
+                "Дата операции": "2023-10-01",
                 "Номер карты": "1234567890123456",
                 "Сумма операции": -100.00,
                 "Кешбэк": 1.00,
                 "Категория": "Супермаркеты",
                 "Описание": "Магазин"
-            }],
-        [
-            "expenses":
-            {
+            }
+        ],
+        {
+            "expenses": {
                 "total_amount": 100.00,
                 "main": [
                     {"category": "Супермаркеты", "amount": 100.00},
                     {"category": "Остальное", "amount": 0}
-                ], "transfers_and_cash": [ {"category": "Остальное", "amount": 0}]
+                ],
+                "transfers_and_cash": [{"category": "Остальное", "amount": 0}]
             },
-            "income": 
-            {
-                "total_amount": 0, 
-                "main": [{"category": "Остальное", "amount": 0}]},
-
+            "income": {
+                "total_amount": 0,
+                "main": [{"category": "Остальное", "amount": 0}]
+            },
             "currency_rates": [  # Current currency exchange rates
                 {"currency": "USD", "rate": 0.0136},
                 {"currency": "EUR", "rate": 0.0115}
             ],
-
-            "stock_prices": [  # Current stock prices
-                {"stock": "AAPL", "price": 150.12}, {"stock": "AMZN", "price": 3173.18},
-                {"stock": "GOOGL", "price": 2742.39}, {"stock": "MSFT", "price": 296.71}, {"stock": "TSLA", "price": 1007.08}]
-        ]
-    )
-
-])  # Removed extra newline here
-
-def test_events_view(transactions_data, expected, monkeypatch,
-                    mock_currency_rates_response, mock_stock_prices_response):
+            "stock_prices": [ # Current stock prices
+                {"stock": "AAPL", "price": 150.12},
+                {"stock": "AMZN", "price": 3173.18},
+                {"stock": "GOOGL", "price": 2742.39},
+                {"stock": "MSFT", "price": 296.71},
+                {"stock": "TSLA", "price": 1007.08}
+            ]
+        })
+])
+def test_events_view(  # Corrected indentation
+    transactions_data, expected, monkeypatch,
+    mock_currency_rates_response, mock_stock_prices_response
+):
     def mock_read_transactions(file_path):
         return pd.DataFrame(transactions_data)
 

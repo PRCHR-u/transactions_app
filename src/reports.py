@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 def spending_by_category(df, category, date=None):
     """Расчет расходов по категории."""
-    if date:  # Check if date is provided
+    if (
+        date
+    ):  # Check if date is provided
         # Filter DataFrame by date if date is provided
 
         df = df[df["Дата операции"].dt.strftime("%Y-%m-%d") <= date].copy()
@@ -50,7 +52,10 @@ def report_to_file(filename="report.json"):
 
 @report_to_file()  # Apply the decorator to save the report to a file
 def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
-    """Расчет средних трат по дням недели за последние 3 месяца.
+    """
+    Расчет средних трат по дням недели за последние 3 месяца.
+
+
 
     Args:
         transactions: DataFrame с транзакциями
@@ -76,7 +81,13 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
 
     # Создаем пустой DataFrame с нужными днями недели
     weekdays = [
-        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
     ]
     result = pd.DataFrame(index=weekdays, columns=["mean", "count"])
     result.fillna({"mean": 0.0, "count": 0}, inplace=True)
@@ -89,12 +100,16 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     # Make a copy of the DataFrame to avoid modifying the original
 
     transactions = transactions.copy()
-    transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])
+    transactions["Дата операции"] = pd.to_datetime(
+        transactions["Дата операции"]
+        )
     logger.info(f"Всего транзакций в исходном DataFrame: {len(transactions)}")
 
     # Фильтруем транзакции за последние 3 месяца
     df = transactions[
-        (transactions["Дата операции"] >= start_date) & (transactions["Дата операции"] <= end_date)
+        (transactions["Дата операции"] >= start_date)
+        & (transactions["Дата операции"] <= end_date)
+
     ].copy()
 
     # Log the number of transactions filtered by the date range
@@ -118,9 +133,10 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
             result.loc[day, "mean"] = abs(grouped.loc[day, "sum"])
             result.loc[day, "count"] = grouped.loc[day, "count"]
             logger.debug(
-                f"День {day}: сумма={result.loc[day, 'mean']}, " f"количество={result.loc[day, 'count']}"
-            )
+                f"День {day}: сумма={result.loc[day, 'mean']}, "
+                f"количество={result.loc[day, 'count']}"
 
+            )
     # Округляем значения до 2 знаков
     result["mean"] = result["mean"].round(2)
     result["count"] = result["count"].astype(int)
@@ -130,7 +146,9 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     return result
 
 
-def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:
+def spending_by_workday(
+    transactions: pd.DataFrame, date: Optional[str] = None
+    ) -> str:
     """Расчет средних трат в рабочий и выходной день за последние 3 месяца.
 
     Args:
@@ -154,7 +172,9 @@ def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) 
     logger.info(f"Период анализа: с {start_date} по {end_date}")
 
     # Создаем пустой DataFrame для результата
-    result = pd.DataFrame({"mean": [0.0, 0.0]}, index=["Рабочий день", "Выходной день"])
+    result = pd.DataFrame(
+        {"mean": [0.0, 0.0]}, index=["Рабочий день", "Выходной день"]
+        )
 
     if transactions.empty:
         logger.warning("Получен пустой DataFrame с транзакциями")
@@ -164,12 +184,16 @@ def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) 
     # Make a copy of the DataFrame to avoid modifying the original
 
     transactions = transactions.copy()
-    transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])
+    transactions["Дата операции"] = pd.to_datetime(
+        transactions["Дата операции"]
+        )
     logger.info(f"Всего транзакций в исходном DataFrame: {len(transactions)}")
 
     # Фильтруем транзакции за последние 3 месяца
     df = transactions[
-        (transactions["Дата операции"] >= start_date) & (transactions["Дата операции"] <= end_date)
+        (transactions["Дата операции"] >= start_date)
+        & (transactions["Дата операции"] <= end_date)
+
     ].copy()
     # Log the number of transactions filtered by the date range
 

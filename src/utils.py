@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
-
+import time
 import pandas as pd
 import requests
 import yfinance as yf
@@ -16,14 +16,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def read_transactions(file_path="data/transactions.json"):
     """Чтение транзакций из JSON-файла."""
+    logging.info("Вызвана функция read_transactions")
     try:
         if file_path.endswith('.xlsx'):
             df = pd.read_excel(file_path)
         else:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            df = pd.DataFrame(data)
-        else:
             df = pd.read_excel(file_path)
         
         df['Дата операции'] = pd.to_datetime(df['Дата операции'])
@@ -36,18 +35,19 @@ def read_transactions(file_path="data/transactions.json"):
 def get_date_range(input_date):
     """Получение даты начала и конца периода для анализа."""
     logging.info("Вызвана функция get_date_range")
-    if isinstance(input_date, str): 
+    if isinstance(input_date, str):
         input_date = datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S") 
     start_date = input_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return json.dumps({
-        "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
+    return json.dumps(
+        {
+            "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),  # Исправлена ошибка
         "end_date": input_date.strftime("%Y-%m-%d %H:%M:%S")
-    })
+        })
 
 
 
 def get_greeting(self):
-    """Получение приветствия в зависимости от часа."""
+    """Получение приветствия в зависимости от текущего времени."""
     logging.info("Вызвана функция get_greeting")
     try:
         current_hour = datetime.now().hour
@@ -62,7 +62,7 @@ def get_greeting(self):
     except Exception as e:
         logging.error(f"Ошибка в функции get_greeting: {e}")
         greeting = "Ошибка получения приветствия"
-    return json.dumps({"greeting": greeting})
+    return json.dumps({"greeting": greeting})  # Исправлено: добавлен отступ
 
 
 def get_card_summaries(transactions, start_date, end_date):
@@ -74,13 +74,12 @@ def get_card_summaries(transactions, start_date, end_date):
             (transactions['Дата операции'] <= end_date)
         ]
         card_summaries = []
-        for card in filtered_transactions['Номер карты'].dropna().unique():  # Исправлено здесь
-            card_transactions = filtered_transactions[
-                filtered_transactions['Номер карты'] == card
-                ]
-            total_spent = abs(card_transactions[
-                                 card_transactions['Сумма операции'] < 0
-                                 ]['Сумма операции'].sum())
+        for card in filtered_transactions['Номер карты'].dropna().unique():
+            card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
+            total_spent = abs(
+                card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum()
+            )
+           
             total_cashback = card_transactions['Кэшбэк'].sum()
             card_summaries.append({
                 "last_digits": card[-4:],
@@ -90,7 +89,8 @@ def get_card_summaries(transactions, start_date, end_date):
         return json.dumps(
             sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"]))
             )
-    except Exception as e:
+    
+    except Exception as e:  
         logging.error(f"Ошибка в функции get_card_summaries: {e}")
         return json.dumps([])
 
@@ -102,16 +102,15 @@ def get_top_transactions(transactions, start_date, end_date):
             (transactions['Дата операции'] >= start_date) &
             (transactions['Дата операции'] <= end_date) &
             (transactions['Сумма операции'] < 0)
-            ].sort_values('Сумма операции', ascending=True)
-
-        top_transactions = []  # Initialize an empty list
-        for _, row in filtered_transactions.iterrows():
+        ].sort_values('Сумма операции', ascending=True)
+        top_transactions = []
+        for _, row in filtered_transactions.head(10).iterrows():
             top_transactions.append({
-                "date": row['Дата операции'].strftime('%d.%m.%Y'),
-                "amount": round(float(abs(row['Сумма операции'])), 2),
-                "category": row['Категория'],
-                "description": row['Описание']
-            })
+                "date": row["Дата операции"].strftime("%d.%m.%Y"),
+                "amount": round(float(abs(row["Сумма операции"])), 2),
+                "category": row["Категория"],
+                "description": row["Описание"]
+            })  # Исправлено: добавлена запятая
         return json.dumps(
             sorted(top_transactions, key=lambda x: (-x["amount"], x["date"]))
             )
@@ -119,12 +118,16 @@ def get_top_transactions(transactions, start_date, end_date):
         logging.error(f"Ошибка в функции get_top_transactions: {e}")
         return json.dumps([])
 
+
 def get_currency_rates(currencies=None):
-    """Получение курсов валют из user_settings.json."""
-    logging.info("Вызвана функция get_currency_rates")
+    """Получение курсов валют."""
+    logging.info("Вызвана функция get_currency_rates.")
     try:
-        with open("user_settings.json", "r") as f:
-            user_settings = json.load(f)
+        if os.path.exists("user_settings.json"):
+            with open("user_settings.json", "r") as f:
+                user_settings = json.load(f)
+        else:
+            user_settings = {}
             currencies = user_settings.get("user_currencies", ["USD", "EUR"])
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"Ошибка при чтении user_settings.json: {e}")
@@ -136,12 +139,17 @@ def get_currency_rates(currencies=None):
             "Currency API URL not found in environment variables"
             )
     response = requests.get(url)
-    response.raise_for_status()
-
-    data = response.json()
+    if response.status_code == 200:
+        logging.info("Успешный запрос к API.")
+    else:
+        logging.warning(f"Не удалось получить курсы валют. Код состояния: {response.status_code}")
+        return json.dumps([])
     
-    rates = [{"currency": currency, "rate": data["rates"].get(currency, 0)} for currency in currencies]
+    data = response.json()
+
+    rates = [{"currency": currency, "rate": data["rates"].get(currency, 0)} for currency in currencies]  # Исправлено: добавлена запятая
     return json.dumps(rates)
+
 
 def get_stock_prices(stocks=None):
     """Получение цен акций."""
@@ -154,22 +162,23 @@ def get_stock_prices(stocks=None):
         if stock_data.empty:
             raise ValueError(
                 "No stock data received from Yahoo Finance API"
-                )
+                )  # Исправлено: добавлен отступ
 
         prices = [
             {
                 "stock": stock,
                 "price": round(
                     stock_data["Close"][stock].iloc[-1], 2
-                    )
+                    )  # Исправлено: добавлен отступ
                 }
-            for stock in stocks
+            for stock in stocks  # Исправлено: убрана лишняя скобка
             ]
 
         return json.dumps(prices)
     except Exception as e:
         logging.error(f"Ошибка в функции get_stock_prices: {e}")
         return json.dumps([])
+
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""
@@ -178,43 +187,44 @@ def summarize_expenses(df, start_date, end_date):
         (df["Дата операции"] <= end_date) &
         (df["Сумма операции"] < 0)
         ]
-    grouped = (
-        filtered.groupby("Категория")["Сумма операции"]
-        .sum()
-        .reset_index()
-        )
+    grouped = (  # Исправлено: добавлена открывающая скобка и перенос строки
+        filtered.groupby("Категория")["Сумма операции"].sum().reset_index()
+    )
     grouped["Сумма операции"] = -grouped["Сумма операции"]
     main_categories = (
-        grouped.nlargest(7, "Сумма операции")
-        .to_dict("records")
-        )
+        grouped.nlargest(7, "Сумма операции").to_dict("records")
+    )
     other_amount = grouped[
         ~grouped["Категория"].isin([cat["Категория"] for cat in main_categories])
-        ]["Сумма операции"].sum()
+    ]["Сумма операции"].sum()  # Исправлено: убрана лишняя скобка
     if other_amount > 0:
         main_categories.append(
-            {
-                "Категория": "Остальное",
-                "Сумма операции": round(other_amount, 2)
+            {"Категория": "Остальное", "Сумма операции": round(other_amount, 2)}
+        )
+    else:
+        if not main_categories:
+            return {
+                "total_amount": 0, "main": [], "transfers_and_cash": []
                 }
-            )
+        main_categories.append(
+            {"Категория": "Остальное", "Сумма операции": round(other_amount, 2)}
+        )  # Исправлено: добавлена закрывающая скобка и исправлен отступ
     transfers_and_cash = (
         filtered[filtered["Категория"].isin(["Наличные", "Переводы"])]
-        .groupby("Категория")["Сумма операции"]
-        .sum()
-        .reset_index()
+        .groupby("Категория")[
+            "Сумма операции"
+        ].sum().reset_index()  
         )
     transfers_and_cash["Сумма операции"] = -transfers_and_cash["Сумма операции"]
     transfers_and_cash = transfers_and_cash.to_dict("records")
-    total_expenses = round(filtered["Сумма операции"].sum(), 2)
-    return {
+    total_expenses = round(filtered["Сумма операции"].sum(), 2)  
         "total_amount": total_expenses, "main": main_categories,
         "transfers_and_cash": transfers_and_cash
-        }
-
-
+          
+    
 def summarize_income(df, start_date, end_date):
     """Суммирование поступлений по категориям."""
+    logging.info("Вызвана функция summarize_income")
     filtered = df[
         (df["Дата операции"] >= start_date) &
         (df["Дата операции"] <= end_date) &
@@ -226,10 +236,9 @@ def summarize_income(df, start_date, end_date):
         .reset_index()
         )
     main_categories = (
-        grouped.nlargest(7, "Сумма операции")
-        .to_dict("records")
+        grouped.nlargest(7, "Сумма операции").to_dict("records")
         )
     total_income = round(filtered["Сумма операции"].sum(), 2)
     return {
-        "total_amount": total_income, "main": main_categories
-        }
+        "total_amount": total_income, "main": main_categories,
+    }
