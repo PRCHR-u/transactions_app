@@ -65,7 +65,9 @@ def main():
         )
 
     # Отчеты
-    category_report = spending_by_category(df, "Супермаркеты", date="2023-10-15")
+    category_report = spending_by_category(
+        df, "Супермаркеты", date="2023-10-15"
+        )
     print("\nОтчет по категории Супермаркеты:")
     print(json.dumps(category_report, ensure_ascii=False, indent=4))
 

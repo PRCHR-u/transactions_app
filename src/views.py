@@ -31,14 +31,16 @@ def home_view(timestamp, transactions_data=None):
     
     # Получаем даты в формате JSON
     date_range = json.loads(get_date_range(current_time))
-    start_date = datetime.strptime(date_range["start_date"], "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.strptime(
+        date_range["start_date"], "%Y-%m-%d %H:%M:%S"
+        )
     end_date = datetime.strptime(date_range["end_date"], "%Y-%m-%d %H:%M:%S")
-    
+
     # Получаем все данные в формате JSON
     greeting = json.loads(
         get_greeting(current_time)
     )
-    
+
     if transactions is not None:
         cards = json.loads(  # Показывает, что ошибка была исправлена
             get_card_summaries(transactions, start_date, end_date))
@@ -59,7 +61,6 @@ def home_view(timestamp, transactions_data=None):
         "currency_rates": currency_rates,
         "stock_prices": stock_prices,
     }
-
 
 
 def events_view(timestamp, transactions_data=None):
@@ -137,7 +138,7 @@ def events_view(timestamp, transactions_data=None):
                 for cat, amt in transfers_and_cash.sort_values(
                     ascending=False
                 ).items()
-            ]   
+            ]
         },
         "income": {
             "total_amount": round(income["Сумма операции"].sum(), 2),

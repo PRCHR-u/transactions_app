@@ -334,14 +334,13 @@ def test_spending_by_workday_empty_df():
 def test_spending_by_workday_with_income(sample_transactions):
     """Тест с учетом доходов."""
     # Добавляем доход
-    income = pd.DataFrame({
-        'Дата операции': ['2023-10-15'],
-
-
-
-        'Сумма операции': [1000.0],
-        'Категория': ['Доход']
-    })
+    income = pd.DataFrame(
+        {
+            'Дата операции': ['2023-10-15'],
+            'Сумма операции': [1000.0],
+            'Категория': ['Доход']
+        }
+    )
     df = pd.concat([sample_transactions, income])
     result = spending_by_workday(df, date="2023-10-15")
     result_dict = json.loads(result)
