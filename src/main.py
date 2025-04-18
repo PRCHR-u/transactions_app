@@ -30,7 +30,9 @@ def main():
     transactions = df.to_dict("records")
 
     # Выгодные категории повышенного кешбэка
-    profitable_cats = profitable_categories(df, 2023, 10)
+    profitable_cats = profitable_categories(
+        df, 2023, 10
+    )
     print("\nВыгодные категории повышенного кешбэка:")
     print(json.dumps(profitable_cats, ensure_ascii=False, indent=4))
 
@@ -50,7 +52,9 @@ def main():
     print(json.dumps(phone_search_result, ensure_ascii=False, indent=4))
 
     # Поиск переводов физическим лицам
-    physical_transfer_search_result = search_physical_transfers(transactions)
+    physical_transfer_search_result = search_physical_transfers(
+        transactions
+    )
     print("\nПоиск переводов физическим лицам:")
     print(json.dumps(physical_transfer_search_result, ensure_ascii=False, indent=4))
 

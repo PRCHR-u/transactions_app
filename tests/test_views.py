@@ -142,14 +142,14 @@ def test_home_view(transactions_data, expected, monkeypatch,
 
         ],
         {
-            "expenses": {
+            "expenses": {  # Corrected indentation here
                 "total_amount": 2460.23,
                 "main": [
                     {"category": "Супермаркеты", "amount": 1262.00},
                     {"category": "Переводы", "amount": 1198.23},
                     {"category": "Остальное", "amount": 0}
                 ],
-                "transfers_and_cash": [
+                "transfers_and_cash": [  # Corrected closing brace here
                     {"category": "Переводы", "amount": 1198.23},
                     {"category": "Остальное", "amount": 0}
                 ]},\
@@ -185,17 +185,18 @@ def test_home_view(transactions_data, expected, monkeypatch,
                 "Описание": "Магазин"
             }],
         [
-            "expenses": {
+            "expenses":
+            {
                 "total_amount": 100.00,
                 "main": [
                     {"category": "Супермаркеты", "amount": 100.00},
                     {"category": "Остальное", "amount": 0}
-                ], "transfers_and_cash": [
-                    {"category": "Остальное", "amount": 0}]}
-             , "income": {
-                "total_amount": 0,
-                "main": [{"category": "Остальное", "amount": 0}]
+                ], "transfers_and_cash": [ {"category": "Остальное", "amount": 0}]
             },
+            "income": 
+            {
+                "total_amount": 0, 
+                "main": [{"category": "Остальное", "amount": 0}]},
 
             "currency_rates": [  # Current currency exchange rates
                 {"currency": "USD", "rate": 0.0136},
@@ -204,14 +205,12 @@ def test_home_view(transactions_data, expected, monkeypatch,
 
             "stock_prices": [  # Current stock prices
                 {"stock": "AAPL", "price": 150.12}, {"stock": "AMZN", "price": 3173.18},
-                {"stock": "GOOGL", "price": 2742.39}, {"stock": "MSFT", "price": 296.71},
-                {"stock": "TSLA", "price": 1007.08}]
+                {"stock": "GOOGL", "price": 2742.39}, {"stock": "MSFT", "price": 296.71}, {"stock": "TSLA", "price": 1007.08}]
         ]
     )
 
+])  # Removed extra newline here
 
-
-])
 def test_events_view(transactions_data, expected, monkeypatch,
                     mock_currency_rates_response, mock_stock_prices_response):
     def mock_read_transactions(file_path):
