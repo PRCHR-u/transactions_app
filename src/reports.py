@@ -21,7 +21,7 @@ def spending_by_category(df, category, date=None):
 
         df = df[df["Дата операции"].dt.strftime("%Y-%m-%d") <= date].copy()
     df_filtered = df[df["Категория"] == category]
-    df_filtered = df_filtered[df_filtered["Сумма операции"] < 0]  # Только расходы
+    df_filtered = df_filtered[df_filtered["Сумма операции"] < 0]
     category_spending = abs(df_filtered["Сумма операции"].sum())
     return {"category": category, "total": float(category_spending)}
 
@@ -149,9 +149,7 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     return result
 
 
-def spending_by_workday(
-    transactions: pd.DataFrame, date: Optional[str] = None
-    ) -> str:
+def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) -> str:
     """Расчет средних трат в рабочий и выходной день за последние 3 месяца.
 
     Args:
@@ -211,19 +209,25 @@ def spending_by_workday(
         df["is_weekend"] = df["Дата операции"].dt.dayofweek.isin([5, 6])
 
         # Группируем по признаку выходного дня и считаем средние траты
-        grouped = df.groupby("is_weekend")["Сумма операции"].agg(["sum", "count"])
+        grouped = df.groupby("is_weekend")["Сумма операции"].agg(
+            ["sum", "count"]
+            )
         logger.debug("Сгруппированные данные:\n%s", grouped)
 
         # Заполняем результат
         if False in grouped.index:  # Weekdays
             result.loc["Рабочий день", "mean"] = abs(grouped.loc[False, "sum"])
             logger.debug(
-                f"Средние траты в рабочий день: {result.loc['Рабочий день', 'mean']}"
+                f"Средние траты в рабочий день: {
+                    result.loc['Рабочий день', 'mean']
+                    }"
             )
         if True in grouped.index:  # Weekends
             result.loc["Выходной день", "mean"] = abs(grouped.loc[True, "sum"])
             logger.debug(
-                f"Средние траты в выходной день: {result.loc['Выходной день', 'mean']}"
+                f"Средние траты в выходной день: {
+                    result.loc['Выходной день', 'mean']
+                    }"
             )
     # Округляем значения до 2 знаков
     result["mean"] = result["mean"].round(2)

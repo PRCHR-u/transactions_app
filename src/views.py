@@ -19,7 +19,7 @@ def home_view(timestamp, transactions_data=None):
         current_time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
     else:
         current_time = timestamp
-    
+
     if transactions_data is None:
         transactions = read_transactions("data/transactions.json")
     else:
@@ -27,8 +27,9 @@ def home_view(timestamp, transactions_data=None):
         if isinstance(transactions_data, str):
             transactions_data = json.loads(transactions_data)
         transactions = pd.DataFrame(transactions_data)
-        transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
-    
+        transactions['Дата операции'] = pd.to_datetime(
+            transactions['Дата операции'])
+
     # Получаем даты в формате JSON
     date_range = json.loads(get_date_range(current_time))
     start_date = datetime.strptime(
@@ -37,12 +38,10 @@ def home_view(timestamp, transactions_data=None):
     end_date = datetime.strptime(date_range["end_date"], "%Y-%m-%d %H:%M:%S")
 
     # Получаем все данные в формате JSON
-    greeting = json.loads(
-        get_greeting(current_time)
-    )
+    greeting = json.loads(get_greeting(current_time))
 
     if transactions is not None:
-        cards = json.loads(  # Показывает, что ошибка была исправлена
+        cards = json.loads(
             get_card_summaries(transactions, start_date, end_date))
         top_transactions = json.loads(
             get_top_transactions(transactions, start_date, end_date)
@@ -53,7 +52,7 @@ def home_view(timestamp, transactions_data=None):
     currency_rates = json.loads(get_currency_rates())
     stock_prices = json.loads(get_stock_prices())
 
-    return {
+    data = {
         "greeting": greeting["greeting"],
         "date_range": date_range,
         "cards": cards,
@@ -61,6 +60,7 @@ def home_view(timestamp, transactions_data=None):
         "currency_rates": currency_rates,
         "stock_prices": stock_prices,
     }
+    return data
 
 
 def events_view(timestamp, transactions_data=None):
@@ -105,12 +105,6 @@ def events_view(timestamp, transactions_data=None):
 
     # Получаем топ-5 категорий расходов
     top_expenses = expenses_by_category.sort_values(ascending=False)
-    other_expenses = (
-        pd.Series({'Остальное': top_expenses[5:].sum()})
-        if len(top_expenses) > 5
-        else pd.Series({'Остальное': 0.0})
-    )
-    main_expenses = pd.concat([top_expenses[:5], other_expenses])
 
     # Группируем переводы и наличные
     transfers_and_cash = (
@@ -124,7 +118,15 @@ def events_view(timestamp, transactions_data=None):
     income_by_category = income.groupby("Категория")["Сумма операции"].sum()
 
     currency_rates = json.loads(get_currency_rates())
-    stock_prices = json.loads(get_stock_prices())
+    stock_prices = json.loads(
+        get_stock_prices()
+        )
+
+    main_expenses = pd.concat([
+        top_expenses[:5],
+        pd.Series({'Остальное': top_expenses[5:].sum()})
+        if len(top_expenses) > 5 else pd.Series({'Остальное': 0.0})
+    ])
 
     return {
         "expenses": {
@@ -190,18 +192,6 @@ def categories_view(timestamp, transactions_data=None):
         filtered_transactions["Сумма операции"] < 0]
     income = filtered_transactions[filtered_transactions["Сумма операции"] > 0]
 
-    expenses_by_category = (
-        expenses.groupby("Категория")["Сумма операции"].sum().abs()
-    )
-
-    top_expenses = expenses_by_category.sort_values(ascending=False)
-    other_expenses = (
-        pd.Series({"Остальное": top_expenses[5:].sum()})
-        if len(top_expenses) > 5
-        else pd.Series({"Остальное": 0.0})
-    )
-    main_expenses = pd.concat([top_expenses[:5], other_expenses])
-
     transfers_and_cash = (
         expenses[
             expenses["Категория"].isin(["Переводы", "Наличные"])
@@ -221,16 +211,9 @@ def categories_view(timestamp, transactions_data=None):
     if not income_categories:
         income_categories = [{"category": "Остальное", "amount": 0}]
 
-    currency_rates = json.loads(get_currency_rates())
-    stock_prices = json.loads(get_stock_prices())
-
     return {
         "expenses": {
             "total_amount": round(abs(expenses["Сумма операции"].sum()), 2),
-            "main": [
-                {"category": cat, "amount": round(float(amt), 2)}
-                for cat, amt in main_expenses.items()
-            ],
             "transfers_and_cash": [
                 {"category": cat, "amount": round(float(amt), 2)}
                 for cat, amt in transfers_and_cash.sort_values(
@@ -242,5 +225,5 @@ def categories_view(timestamp, transactions_data=None):
             "total_amount": round(
                 income["Сумма операции"].sum(), 2
             ),
-            "main": income_categories}
+            "main": income_categories},
     }

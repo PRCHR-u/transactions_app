@@ -157,7 +157,7 @@ def test_spending_by_workday(sample_transactions, date, expected):  # Renamed to
     assert result == expected
 
 
-@pytest.mark.parametrize(
+@ pytest.mark.parametrize(
     "category,expected",
     [
         ("Супермаркеты", {"category": "Супермаркеты", "total": 2098.94}),
@@ -169,11 +169,9 @@ def test_spending_by_workday(sample_transactions, date, expected):  # Renamed to
         ),
     ],
 )
-def test_spending_by_category_with_cashback(
-    sample_transactions, category, expected
-    ):
-      result = spending_by_category(sample_transactions, category)
-      assert result == expected
+def test_spending_by_category_with_cashback(sample_transactions, category, expected):
+    result = spending_by_category(sample_transactions, category)
+    assert result == expected
 
 
 @pytest.mark.parametrize(
@@ -217,9 +215,7 @@ def test_spending_by_category_zero_amount(
             }
         ]
     )
-    zero_transaction['Дата операции'] = pd.to_datetime(
-        zero_transaction['Дата операции']
-        )
+    zero_transaction['Дата операции'] = pd.to_datetime(zero_transaction['Дата операции'])
 
     test_df = pd.concat(
         [sample_transactions, zero_transaction], ignore_index=True

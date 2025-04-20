@@ -6,30 +6,23 @@ import numpy as np
 import pandas as pd
 
 
-def profitable_categories(
-    df, year, month):
+def profitable_categories(df, year, month):
     """Расчет расходов по категориям за указанный месяц."""
     df["Дата операции"] = pd.to_datetime(
         df["Дата операции"])
     mask = (
-        (df["Дата операции"].dt.year == year) & (df["Дата операции"].dt.month == month)
+        (df["Дата операции"].dt.year == year)
+        & (df["Дата операции"].dt.month == month)
     )
     filtered_df = df[mask].copy()
-    filtered_df = filtered_df[filtered_df["Сумма операции"] < 0]  # Только расходы
+    filtered_df = filtered_df[filtered_df["Сумма операции"] < 0]
     filtered_df["Сумма операции"] = filtered_df["Сумма операции"].abs()
 
     # Группируем по категориям и суммируем расходы
     category_totals = filtered_df.groupby("Категория")["Сумма операции"].sum()
 
-    all_categories = [
-        "Супермаркеты",
-        "Переводы",
-        "Различные товары",
-        "Бонусы",
-        "Пополнение_BANK007",
-        "Проценты_на_остаток",
-        "Кэшбэк",
-    ]
+    all_categories = ["Супермаркеты", "Переводы", "Различные товары", "Бонусы",
+                      "Пополнение_BANK007", "Проценты_на_остаток", "Кэшбэк"]
 
     # Формируем словарь с суммами по категориям
     result = {
@@ -48,8 +41,10 @@ def investment_bank(month, transactions, threshold):
     if filtered_df.empty:
         return json.dumps(0.0)
 
-    total_amount = abs(filtered_df["Сумма операции"].sum())
-    rounded_amount = np.ceil(total_amount / threshold) * threshold
+    total_amount = abs(filtered_df["Сумма операции"].sum())  # noqa: E501
+    rounded_amount = (
+        np.ceil(total_amount / threshold) * threshold
+    )  # noqa: E501
     investment_amount = rounded_amount - total_amount
     return json.dumps(round(float(investment_amount), 2))
 
@@ -58,13 +53,17 @@ def simple_search(query, transactions):
     query = query.lower()
     matches = [
         t
-        for t in transactions
-        if query in t["Категория"].lower() or query in t["Описание"].lower()
+        for t in transactions  # noqa: E501
+        if (query in t["Категория"].lower()
+            or query in t["Описание"].lower())
+        # noqa: E501
     ]
     return json.dumps(matches, ensure_ascii=False)
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
 
 def search_phone_numbers(transactions):
@@ -72,18 +71,23 @@ def search_phone_numbers(transactions):
     try:
         phone_pattern = r"\+7\s+\d{3}\s+\d{2,3}[-\s]\d{2}[-\s]\d{2}"  # noqa: E501
         matches = [
-            t for t in transactions if re.search(phone_pattern, t["Описание"])
-        ]
+            t
+            for t in transactions
+            if re.search(phone_pattern, t["Описание"])  # noqa: E501
+        ]  # noqa: E501
         return json.dumps(matches, ensure_ascii=False)  # type: ignore
     except Exception as e:
         logging.error(f"Ошибка в функции search_phone_numbers: {e}")
         return json.dumps([], ensure_ascii=False)
 
 
-def search_physical_transfers(transactions):
-    exclude_pattern = re.compile(r"карт|счет|кредитн|перевод|тп", re.IGNORECASE)
+def search_physical_transfers(transactions):  # noqa: E501
+    exclude_pattern = re.compile(
+        r"карт|счет|кредитн|перевод|тп", re.IGNORECASE
+    )  # noqa: E501
     name_pattern = re.compile(
-        r"^[А-ЯA-Z][а-яa-z]+(?:\s+[А-ЯA-Z]\.?)?$|^[А-ЯA-Z][а-яa-z]+\s+[А-ЯA-Z][а-яa-z]+$"  # noqa: E501
+        r"^[А-ЯA-Z][а-яa-z]+(?:\s+[А-ЯA-Z]\.?)?$"
+        r"|^[А-ЯA-Z][а-яa-z]+\s+[А-ЯA-Z][а-яa-z]+$"  # noqa: E501
     )
     matches = [
         t

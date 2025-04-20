@@ -45,8 +45,7 @@ from src.views import events_view, home_view  # Ensure this line exists
 
             "top_transactions": [  # Most recent transactions
                 {"date": "01.10.2023", "amount": 1262.00,
-                 "category": "Супермаркеты", "description": "Лента"
-                },
+                 "category": "Супермаркеты", "description": "Лента"},
                 {
                     "date": "15.10.2023",
                     "amount": 1198.23,
@@ -78,8 +77,7 @@ from src.views import events_view, home_view  # Ensure this line exists
                 "Категория": "Супермаркеты",
                 "Описание": "Магазин",
             },
-        ],
-        {
+            {
             "greeting": "Добрый день",
             "date_range": {
                 "start_date": "2023-10-01 00:00:00",
@@ -106,19 +104,17 @@ from src.views import events_view, home_view  # Ensure this line exists
                 {"stock": "MSFT", "price": 296.71},
                 {"stock": "TSLA", "price": 1007.08}
             ]
-        }
-    )
+        }]
 ])
 def test_home_view(
     transactions_data, expected, monkeypatch,
-    mock_currency_rates_response, mock_stock_prices_response
-    ):
+    mock_currency_rates_response, mock_stock_prices_response):
     def mock_read_transactions(file_path):
         return pd.DataFrame(transactions_data)
 
     monkeypatch.setattr(
         "src.utils.read_transactions", mock_read_transactions
-        )
+    )
 
     transactions_json = json.dumps(transactions_data)
 
@@ -173,7 +169,7 @@ def test_home_view(
                 {"stock": "MSFT", "price": 296.71},
                 {"stock": "TSLA", "price": 1007.08}]}
     ),
-
+    
     (  # Test case 2
 
         [
