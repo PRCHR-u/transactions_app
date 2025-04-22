@@ -167,7 +167,7 @@ def test_home_view(
                 {"stock": "AMZN", "price": 3173.18},
                 {"stock": "GOOGL", "price": 2742.39},
                 {"stock": "MSFT", "price": 296.71},
-                {"stock": "TSLA", "price": 1007.08}]}
+                {"stock": "TSLA", "price": 1007.08})
     ),
     
     (  # Test case 2

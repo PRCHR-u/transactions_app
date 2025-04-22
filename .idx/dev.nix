@@ -10,10 +10,12 @@
     # pkgs.python311
     # pkgs.python311Packages.pip
     # pkgs.nodejs_20
+    pkgs.python311Packages.pip
     # pkgs.nodePackages.nodemon
-    pkgs.python312Packages.flake8
+    pkgs.python312Packages.flake8    
     pkgs.python312Packages.black
-    pkgs.python312Packages.pytest
+    pkgs.python312Packages.pandas
+    pkgs.python312Packages.pytest    
   ];
 
   # Sets environment variables in the workspace
