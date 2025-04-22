@@ -125,10 +125,12 @@ def get_currency_rates(currencies=None):
     try:
         if os.path.exists("user_settings.json"):
             with open("user_settings.json", "r") as f:
-                user_settings = json.load(f)
-        else:
-            user_settings = {}
-            currencies = user_settings.get("user_currencies", ["USD", "EUR"])
+                try:
+                    user_settings = json.load(f)
+                    currencies = user_settings.get("user_currencies", ["USD", "EUR"])
+                except json.JSONDecodeError:
+                    logging.error("Invalid JSON format in user_settings.json")
+                    currencies = ["USD", "EUR"]
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"Ошибка при чтении user_settings.json: {e}")
         currencies = ["USD", "EUR"]  # Default currencies
@@ -154,8 +156,18 @@ def get_currency_rates(currencies=None):
 def get_stock_prices(stocks=None):
     """Получение цен акций."""
     logging.info("Вызвана функция get_stock_prices")
-    try:
-        if stocks is None:
+    if stocks is None:
+        try:
+            if os.path.exists("user_settings.json"):
+                with open("user_settings.json", "r") as f:
+                    user_settings = json.load(f)
+                    stocks = user_settings.get("user_stocks")
+                    if not stocks:  # Если user_stocks пуст или отсутствует
+                        stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+            else:
+                stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logging.error(f"Ошибка при чтении user_settings.json: {e}")
             stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 
         stock_data = yf.download(stocks, period="1d", progress=False)
@@ -175,53 +187,10 @@ def get_stock_prices(stocks=None):
             ]
 
         return json.dumps(prices)
-    except Exception as e:
+    except Exception as e:  # Обрабатываем все исключения, включая ValueError
         logging.error(f"Ошибка в функции get_stock_prices: {e}")
         return json.dumps([])
 
-
-def summarize_expenses(df, start_date, end_date):
-    """Суммирование расходов по категориям."""
-    filtered = df[
-        (df["Дата операции"] >= start_date) &
-        (df["Дата операции"] <= end_date) &
-        (df["Сумма операции"] < 0)
-        ]
-    grouped = (  # Исправлено: добавлена открывающая скобка и перенос строки
-        filtered.groupby("Категория")["Сумма операции"].sum().reset_index()
-    )
-    grouped["Сумма операции"] = -grouped["Сумма операции"]
-    main_categories = (
-        grouped.nlargest(7, "Сумма операции").to_dict("records")
-    )
-    other_amount = grouped[
-        ~grouped["Категория"].isin([cat["Категория"] for cat in main_categories])
-    ]["Сумма операции"].sum()  # Исправлено: убрана лишняя скобка
-    if other_amount > 0:
-        main_categories.append(
-            {"Категория": "Остальное", "Сумма операции": round(other_amount, 2)}
-        )
-    else:
-        if not main_categories:
-            return {
-                "total_amount": 0, "main": [], "transfers_and_cash": []
-                }
-        main_categories.append(
-            {"Категория": "Остальное", "Сумма операции": round(other_amount, 2)}
-        )  # Исправлено: добавлена закрывающая скобка и исправлен отступ
-    transfers_and_cash = (
-        filtered[filtered["Категория"].isin(["Наличные", "Переводы"])]
-        .groupby("Категория")[
-            "Сумма операции"
-        ].sum().reset_index()  
-        )
-    transfers_and_cash["Сумма операции"] = -transfers_and_cash["Сумма операции"]
-    transfers_and_cash = transfers_and_cash.to_dict("records")
-    total_expenses = round(filtered["Сумма операции"].sum(), 2)  
-        "total_amount": total_expenses, "main": main_categories,
-        "transfers_and_cash": transfers_and_cash
-          
-    
 def summarize_income(df, start_date, end_date):
     """Суммирование поступлений по категориям."""
     logging.info("Вызвана функция summarize_income")

@@ -50,7 +50,14 @@ def home_view(timestamp, transactions_data=None):
         cards, top_transactions = [], []
 
     currency_rates = json.loads(get_currency_rates())
-    stock_prices = json.loads(get_stock_prices())
+    # Чтение списка акций пользователя из user_settings.json
+    try:
+        with open("user_settings.json", "r") as f:
+            user_settings = json.load(f)
+        user_stocks = user_settings.get("user_stocks")
+    except (FileNotFoundError, json.JSONDecodeError):
+        user_stocks = None  # Используем None, чтобы функция использовала значения по умолчанию
+    stock_prices = json.loads(get_stock_prices(user_stocks))
 
     data = {
         "greeting": greeting["greeting"],
