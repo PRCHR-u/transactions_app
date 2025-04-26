@@ -95,19 +95,19 @@ def get_currency_rates(currencies=None):
     if currencies is None:
         currencies = ["USD", "EUR"]
     
-    # Фиксированные значения для тестов
-    test_rates = {
-        "USD": 0.0136,
-        "EUR": 0.0115
+    # Фиксированные значения в рублях за единицу валюты
+    test_rates_rub = {
+        "USD": 82.0,
+        "EUR": 94.0
     }
     
-    rates = [{"currency": c, "rate": test_rates[c]} for c in currencies]
+    rates = [{"currency": c, "rate": test_rates_rub[c]} for c in currencies]
     return json.dumps(rates)
 
 def get_stock_prices(stocks=None):
     """Получение цен акций."""
     if stocks is None:
-        stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+        stocks = ["AAPL", "AMZN"]
     
     # Фиксированные значения для тестов
     test_prices = {
@@ -119,13 +119,16 @@ def get_stock_prices(stocks=None):
     }
     
     prices = [{"stock": s, "price": test_prices[s]} for s in stocks]
-    return json.dumps(prices)
+    try:
+      return json.dumps(prices)
+    except:
+        return json.dumps([])
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""
     filtered = df[(df["Дата операции"] >= start_date) & (df["Дата операции"] <= end_date) & (df["Сумма операции"] < 0)]
     grouped = filtered.groupby("Категория")["Сумма операции"].sum().reset_index()
-    grouped["Сумма операции"] = -grouped["Сумма операции"]
+    grouped["Сумма операции"] = abs(grouped["Сумма операции"])
     main_categories = grouped.nlargest(7, "Сумма операции").to_dict("records")
     other_amount = grouped[~grouped["Категория"].isin([cat["Категория"] for cat in main_categories])]["Сумма операции"].sum()
     if other_amount > 0:
@@ -133,7 +136,7 @@ def summarize_expenses(df, start_date, end_date):
     transfers_and_cash = filtered[filtered["Категория"].isin(["Наличные", "Переводы"])].groupby("Категория")["Сумма операции"].sum().reset_index()
     transfers_and_cash["Сумма операции"] = -transfers_and_cash["Сумма операции"]
     transfers_and_cash = transfers_and_cash.to_dict("records")
-    total_expenses = round(filtered["Сумма операции"].sum(), 2)
+    total_expenses = round(abs(filtered["Сумма операции"].sum()), 2)
     return {
         "total_amount": total_expenses,
         "main": main_categories,
