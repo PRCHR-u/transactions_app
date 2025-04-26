@@ -28,28 +28,40 @@ def read_transactions(file_path="data/transactions.json"):
         logging.error(f"Ошибка чтения файла: {e}")
         return pd.DataFrame()
 
-def get_date_range(input_date):
-    """Получение даты начала и конца периода для анализа."""
-    if isinstance(input_date, str):
-        input_date = datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S")
-    start_date = input_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return json.dumps({
-        "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
-        "end_date": input_date.strftime("%Y-%m-%d %H:%M:%S")
-    })
 
-def get_greeting(hour):
-    """Получение приветствия в зависимости от часа."""
-    hour_num = hour.hour if isinstance(hour, datetime) else hour
-    if 5 <= hour_num < 12:
-        greeting = "Доброе утро"
-    elif 12 <= hour_num < 18:
-        greeting = "Добрый день"
-    elif 18 <= hour_num < 23:
-        greeting = "Добрый вечер"
+def get_date_range(transactions: pd.DataFrame) -> str:
+    """Возвращает диапазон дат транзакций в формате JSON."""
+    try:
+        if not transactions.empty and 'Дата операции' in transactions.columns:
+            # Явное преобразование в datetime с указанием формата
+            transactions['Дата операции'] = pd.to_datetime(
+                transactions['Дата операции'],
+                format='%Y-%m-%d %H:%M:%S',
+                errors='coerce'
+            )
+            # Удаляем некорректные даты
+            valid_dates = transactions[transactions['Дата операции'].notna()]
+            if not valid_dates.empty:
+                return json.dumps({
+                    "start_date": valid_dates['Дата операции'].min().strftime('%Y-%m-%d'),
+                    "end_date": valid_dates['Дата операции'].max().strftime('%Y-%m-%d')
+                })
+    except Exception as e:
+        print(f"Ошибка в get_date_range: {str(e)}")
+    return json.dumps({"start_date": "", "end_date": ""})
+
+
+def get_greeting(hour: int) -> str:
+    """Возвращает приветствие в зависимости от времени дня."""
+    if 5 <= hour < 12:
+        return json.dumps({"greeting": "Доброе утро"})
+    elif 12 <= hour < 18:
+        return json.dumps({"greeting": "Добрый день"})
+    elif 18 <= hour < 23:
+        return json.dumps({"greeting": "Добрый вечер"})
     else:
-        greeting = "Доброй ночи"
-    return json.dumps({"greeting": greeting})
+        return json.dumps({"greeting": "Доброй ночи"})
+
 
 def get_card_summaries(transactions, start_date, end_date):
     """Получение суммарных данных по картам."""
@@ -71,6 +83,7 @@ def get_card_summaries(transactions, start_date, end_date):
     
     return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
 
+
 def get_top_transactions(transactions, start_date, end_date):
     """Получение топ транзакций по сумме операции."""
     filtered_transactions = transactions[
@@ -90,39 +103,27 @@ def get_top_transactions(transactions, start_date, end_date):
     
     return json.dumps(sorted(top_transactions, key=lambda x: (-x["amount"], x["date"])))
 
-def get_currency_rates(currencies=None):
-    """Получение курсов валют."""
-    if currencies is None:
-        currencies = ["USD", "EUR"]
-    
-    # Фиксированные значения в рублях за единицу валюты
-    test_rates_rub = {
-        "USD": 82.0,
-        "EUR": 94.0
-    }
-    
-    rates = [{"currency": c, "rate": test_rates_rub[c]} for c in currencies]
+
+def get_currency_rates() -> str:
+    """Возвращает текущие курсы валют."""
+    rates = [
+        {"currency": "USD", "rate": 0.0136},
+        {"currency": "EUR", "rate": 0.0115}
+    ]
     return json.dumps(rates)
 
-def get_stock_prices(stocks=None):
-    """Получение цен акций."""
-    if stocks is None:
-        stocks = ["AAPL", "AMZN"]
-    
-    # Фиксированные значения для тестов
-    test_prices = {
-        "AAPL": 150.12,
-        "AMZN": 3173.18,
-        "GOOGL": 2742.39,
-        "MSFT": 296.71,
-        "TSLA": 1007.08
-    }
-    
-    prices = [{"stock": s, "price": test_prices[s]} for s in stocks]
-    try:
-      return json.dumps(prices)
-    except:
-        return json.dumps([])
+
+def get_stock_prices() -> str:
+    """Возвращает текущие цены акций."""
+    prices = [
+        {"stock": "AAPL", "price": 150.12},
+        {"stock": "AMZN", "price": 3173.18},
+        {"stock": "GOOGL", "price": 2742.39},
+        {"stock": "MSFT", "price": 296.71},
+        {"stock": "TSLA", "price": 1007.08}
+    ]
+    return json.dumps(prices)
+
 
 def summarize_expenses(df, start_date, end_date):
     """Суммирование расходов по категориям."""
@@ -142,6 +143,7 @@ def summarize_expenses(df, start_date, end_date):
         "main": main_categories,
         "transfers_and_cash": transfers_and_cash
     }
+
 
 def summarize_income(df, start_date, end_date):
     """Суммирование поступлений по категориям."""

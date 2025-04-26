@@ -26,11 +26,34 @@ def test_get_greeting(hour, expected):
     result = json.loads(get_greeting(hour))
     assert result["greeting"] == expected
 
-def test_get_date_range():
-    input_date = "2023-10-15 14:30:00"
-    result = json.loads(get_date_range(input_date))
-    assert result["start_date"] == "2023-10-01 00:00:00"
-    assert result["end_date"] == "2023-10-15 14:30:00"
+def test_get_currency_rates():
+    result = json.loads(get_currency_rates())
+    assert result == [
+        {"currency": "USD", "rate": 0.0136},
+        {"currency": "EUR", "rate": 0.0115}
+    ]
+
+
+def test_get_stock_prices():
+    result = json.loads(get_stock_prices())
+    assert result == [
+        {"stock": "AAPL", "price": 150.12},
+        {"stock": "AMZN", "price": 3173.18},
+        {"stock": "GOOGL", "price": 2742.39},
+        {"stock": "MSFT", "price": 296.71},
+        {"stock": "TSLA", "price": 1007.08}
+    ]
+
+
+def test_get_date_range(sample_transactions):
+    """Тест корректности определения диапазона дат."""
+    result = json.loads(get_date_range(sample_transactions))
+
+    assert result == {
+        "start_date": "2023-08-15",
+        "end_date": "2023-10-25"
+    }
+
 
 @pytest.mark.parametrize("transactions_data,expected", [
     (
@@ -81,6 +104,7 @@ def test_get_card_summaries(transactions_data, expected):
     result = json.loads(get_card_summaries(df, start_date, end_date))
     assert result == expected
 
+
 @pytest.mark.parametrize("transactions_data,expected", [
     (
         [
@@ -124,32 +148,9 @@ def test_get_top_transactions(transactions_data, expected):
     result = json.loads(get_top_transactions(df, start_date, end_date))
     assert result == expected
 
-@patch('src.utils.get_currency_rates')
-def test_get_currency_rates(mock_get_rates):
-    mock_get_rates.return_value = [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
-    result = json.loads(get_currency_rates())
-    assert result == [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
 
-@patch('src.utils.get_stock_prices')
-def test_get_stock_prices(mock_get_prices):
-    mock_get_prices.return_value = [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
-    result = json.loads(get_stock_prices())
-    assert result == [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
+def test_date_conversion(sample_transactions):
+    """Проверка корректности преобразования дат."""
+    assert sample_transactions['Дата операции'].dtype == 'datetime64[ns]'
+    # Сравниваем только даты, игнорируя время
+    assert sample_transactions['Дата операции'].min().date() == pd.to_datetime("2023-08-15").date()
