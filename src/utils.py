@@ -33,12 +33,14 @@ def get_date_range(transactions: pd.DataFrame) -> str:
     """Возвращает диапазон дат транзакций в формате JSON."""
     try:
         if not transactions.empty and 'Дата операции' in transactions.columns:
-            # Явное преобразование в datetime с указанием формата
-            transactions['Дата операции'] = pd.to_datetime(
-                transactions['Дата операции'],
-                format='%Y-%m-%d %H:%M:%S',
-                errors='coerce'
-            )
+            # Преобразуем даты в datetime, если они еще не в этом формате
+            if not pd.api.types.is_datetime64_any_dtype(transactions['Дата операции']):
+                transactions['Дата операции'] = pd.to_datetime(
+                    transactions['Дата операции'],
+                    format='%Y-%m-%d %H:%M:%S',
+                    errors='coerce'
+                )
+            
             # Удаляем некорректные даты
             valid_dates = transactions[transactions['Дата операции'].notna()]
             if not valid_dates.empty:
@@ -65,23 +67,31 @@ def get_greeting(hour: int) -> str:
 
 def get_card_summaries(transactions, start_date, end_date):
     """Получение суммарных данных по картам."""
-    filtered_transactions = transactions[
-        (transactions['Дата операции'] >= start_date) &
-        (transactions['Дата операции'] <= end_date)
-    ]
-    
-    card_summaries = []
-    for card in filtered_transactions['Номер карты'].unique():
-        card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
-        total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
-        total_cashback = card_transactions['Кешбэк'].sum()
-        card_summaries.append({
-            "last_digits": card[-4:],
-            "total_spent": round(float(total_spent), 2),
-            "cashback": round(float(total_cashback), 2)
-        })
-    
-    return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
+    try:
+        filtered_transactions = transactions[
+            (transactions['Дата операции'] >= start_date) &
+            (transactions['Дата операции'] <= end_date)
+        ]
+        
+        # Если нет колонки 'Номер карты', возвращаем пустой список
+        if 'Номер карты' not in filtered_transactions.columns:
+            return json.dumps([])
+        
+        card_summaries = []
+        for card in filtered_transactions['Номер карты'].unique():
+            card_transactions = filtered_transactions[filtered_transactions['Номер карты'] == card]
+            total_spent = abs(card_transactions[card_transactions['Сумма операции'] < 0]['Сумма операции'].sum())
+            total_cashback = card_transactions['Кешбэк'].sum()
+            card_summaries.append({
+                "last_digits": card[-4:],
+                "total_spent": round(float(total_spent), 2),
+                "cashback": round(float(total_cashback), 2)
+            })
+        
+        return json.dumps(sorted(card_summaries, key=lambda x: (-x["total_spent"], x["last_digits"])))
+    except Exception as e:
+        print(f"Ошибка в get_card_summaries: {str(e)}")
+        return json.dumps([])
 
 
 def get_top_transactions(transactions, start_date, end_date):

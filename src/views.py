@@ -14,6 +14,15 @@ from src.utils import (
 
 def home_view(current_date: str, transactions_json: str) -> dict:
     """Главное представление с общей статистикой."""
+    result = {
+        "greeting": {"greeting": "Добрый день"},
+        "date_range": {"start_date": "", "end_date": ""},
+        "cards": [],
+        "top_transactions": [],
+        "currency_rates": [],
+        "stock_prices": []
+    }
+
     try:
         # Преобразуем JSON в DataFrame
         transactions = pd.DataFrame(json.loads(transactions_json))
@@ -22,27 +31,30 @@ def home_view(current_date: str, transactions_json: str) -> dict:
         if 'Дата операции' not in transactions.columns:
             raise ValueError("Отсутствует колонка 'Дата операции'")
 
-        # Получаем данные
-        current_hour = datetime.strptime(current_date, "%Y-%m-%d %H:%M:%S").hour
-        return {
-            "greeting": json.loads(get_greeting(current_hour)),
-            "date_range": json.loads(get_date_range(transactions)),
-            "cards": json.loads(get_card_summaries(transactions)),
-            "top_transactions": json.loads(get_top_transactions(transactions)),
-            "currency_rates": json.loads(get_currency_rates()),
-            "stock_prices": json.loads(get_stock_prices())
-        }
+        # Преобразуем даты в datetime
+        transactions['Дата операции'] = pd.to_datetime(transactions['Дата операции'])
+
+        # Получаем диапазон дат
+        date_range = json.loads(get_date_range(transactions))
+        if date_range["start_date"] and date_range["end_date"]:
+            start_date = pd.to_datetime(date_range['start_date'])
+            end_date = pd.to_datetime(date_range['end_date'])
+            result["date_range"] = date_range
+
+            # Получаем данные
+            current_hour = datetime.strptime(current_date, "%Y-%m-%d %H:%M:%S").hour
+            result["greeting"] = json.loads(get_greeting(current_hour))
+            result["cards"] = json.loads(get_card_summaries(transactions, start_date, end_date))
+            result["top_transactions"] = json.loads(get_top_transactions(transactions, start_date, end_date))
+            result["currency_rates"] = json.loads(get_currency_rates())
+            result["stock_prices"] = json.loads(get_stock_prices())
+
     except Exception as e:
         print(f"Ошибка в home_view: {str(e)}")
-        return {
-            "error": str(e),
-            "greeting": {"greeting": "Добрый день"},
-            "date_range": {"start_date": "", "end_date": ""},
-            "cards": [],
-            "top_transactions": [],
-            "currency_rates": [],
-            "stock_prices": []
-        }
+        if "error" not in result:
+            result["error"] = str(e)
+
+    return result
 
 
 def events_view(current_date: str, transactions_json: str) -> dict:
