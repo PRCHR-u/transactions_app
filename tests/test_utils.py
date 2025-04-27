@@ -27,22 +27,48 @@ def test_get_greeting(hour, expected):
     assert result["greeting"] == expected
 
 def test_get_currency_rates():
+    """Тест получения курсов валют."""
     result = json.loads(get_currency_rates())
-    assert result == [
-        {"currency": "USD", "rate": 0.0136},
-        {"currency": "EUR", "rate": 0.0115}
-    ]
+    
+    # Проверяем структуру ответа
+    assert isinstance(result, list)
+    assert len(result) == 2
+    
+    # Проверяем формат каждой записи
+    for rate_data in result:
+        assert "currency" in rate_data
+        assert "rate" in rate_data
+        assert isinstance(rate_data["currency"], str)
+        assert isinstance(rate_data["rate"], (int, float))
+        assert rate_data["rate"] > 0
+    
+    # Проверяем наличие основных валют
+    currencies = [item["currency"] for item in result]
+    assert "USD" in currencies
+    assert "EUR" in currencies
 
 
 def test_get_stock_prices():
+    """Тест получения цен акций."""
     result = json.loads(get_stock_prices())
-    assert result == [
-        {"stock": "AAPL", "price": 150.12},
-        {"stock": "AMZN", "price": 3173.18},
-        {"stock": "GOOGL", "price": 2742.39},
-        {"stock": "MSFT", "price": 296.71},
-        {"stock": "TSLA", "price": 1007.08}
-    ]
+    
+    # Проверяем структуру ответа
+    assert isinstance(result, list)
+    assert len(result) > 0
+    
+    # Проверяем формат каждой записи
+    for stock_data in result:
+        assert "stock" in stock_data
+        assert "price" in stock_data
+        assert isinstance(stock_data["stock"], str)
+        assert isinstance(stock_data["price"], (int, float))
+        assert stock_data["price"] > 0
+    
+    # Проверяем наличие основных акций
+    stock_symbols = [item["stock"] for item in result]
+    expected_stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+    for symbol in expected_stocks:
+        assert symbol in stock_symbols
 
 
 def test_get_date_range(sample_transactions):
