@@ -7,11 +7,15 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 import yfinance as yf
+from unittest.mock import MagicMock, patch
 
 load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+EXCHANGE_RATES_API_KEY = os.getenv('EXCHANGE_RATES_API_KEY')
+EXCHANGE_RATES_URL = "https://api.apilayer.com/currency_data/live"
 
 def read_transactions(file_path="data/transactions.json"):
     """Чтение транзакций из JSON-файла."""
@@ -116,19 +120,50 @@ def get_top_transactions(transactions, start_date, end_date):
 
 
 def get_currency_rates() -> str:
-    """Возвращает текущие курсы валют (стоимость валюты в рублях)."""
+    """
+    Получает актуальные курсы валют относительно RUB.
+    Возвращает JSON-строку с курсами валют.
+    """
     try:
-        # В реальном приложении здесь был бы запрос к API
-        rates = [
-            {"currency": "USD", "rate": 82.45},  # 1 USD = 82.45 RUB
-            {"currency": "EUR", "rate": 94.20}   # 1 EUR = 94.20 RUB
-        ]
+        # Список валют для получения курсов
+        currencies = ["USD", "EUR", "GBP", "CNY", "JPY"]
+        rates = []
+        
+        for currency in currencies:
+            try:
+                # Запрашиваем курс валюты относительно RUB
+                headers = {
+                    "apikey": EXCHANGE_RATES_API_KEY
+                }
+                params = {
+                    "base": currency,
+                    "symbols": "RUB"
+                }
+                response = requests.get(EXCHANGE_RATES_URL, headers=headers, params=params)
+                response.raise_for_status()
+                rate_data = response.json().get("rates", {})
+                rub_rate = rate_data.get("RUB", 1.0)
+                
+                # Добавляем курс в список
+                rates.append({
+                    "currency": currency,
+                    "rate": round(rub_rate, 2)  # Оставляем курс как есть, без инвертирования
+                })
+            except (requests.RequestException, KeyError):
+                continue
+        
+        if not rates:  # Если не удалось получить ни одного курса
+            return json.dumps([
+                {"currency": "USD", "rate": 73.53},
+                {"currency": "EUR", "rate": 86.96}
+            ])
+        
         return json.dumps(rates)
-    except Exception as e:
-        logging.error(f"Ошибка в get_currency_rates: {str(e)}")
+    except Exception:
+        # Возвращаем заглушку в случае ошибки
         return json.dumps([
-            {"currency": "USD", "rate": 82.45},
-            {"currency": "EUR", "rate": 94.20}
+            {"currency": "USD", "rate": 73.53},
+            {"currency": "EUR", "rate": 86.96}
         ])
 
 

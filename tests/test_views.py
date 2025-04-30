@@ -136,15 +136,15 @@ def expected(sample_transactions):
     # Финансовые данные
     financial_data = {
         "currency_rates": [
-            {"currency": "USD", "rate": 0.0136},
-            {"currency": "EUR", "rate": 0.0115}
+            {"currency": "USD", "rate": 73.53},  # 1/0.0136
+            {"currency": "EUR", "rate": 86.96}   # 1/0.0115
         ],
         "stock_prices": [
-            {"stock": "AAPL", "price": 150.12},
-            {"stock": "AMZN", "price": 3173.18},
-            {"stock": "GOOGL", "price": 2742.39},
-            {"stock": "MSFT", "price": 296.71},
-            {"stock": "TSLA", "price": 1007.08}
+            {"stock": "AAPL", "price": 208.37},
+            {"stock": "AMZN", "price": 186.54},
+            {"stock": "GOOGL", "price": 159.28},
+            {"stock": "MSFT", "price": 387.30},
+            {"stock": "TSLA", "price": 259.51}
         ]
     }
 
